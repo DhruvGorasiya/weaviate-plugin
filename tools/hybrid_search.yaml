@@ -5,6 +5,11 @@ identity:
     en_US: "Hybrid Search"
     zh_Hans: "混合搜索"
     pt_BR: "Busca Híbrida"
+  description:
+    en_US: "Perform hybrid search combining vector similarity and keyword search"
+    zh_Hans: "执行结合向量相似性和关键词搜索的混合搜索"
+    pt_BR: "Execute busca híbrida combinando similaridade vetorial e busca por palavras-chave"
+  icon: "icon.svg"
 description:
   human:
     en_US: "Perform hybrid search combining vector similarity and keyword search"

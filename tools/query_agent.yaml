@@ -5,6 +5,11 @@ identity:
     en_US: "Query Agent"
     zh_Hans: "查询代理"
     pt_BR: "Agente de Consulta"
+  description:
+    en_US: "Natural language query agent that can perform various Weaviate operations"
+    zh_Hans: "可以执行各种 Weaviate 操作的自然语言查询代理"
+    pt_BR: "Agente de consulta em linguagem natural que pode executar várias operações Weaviate"
+  icon: "icon.svg"
 description:
   human:
     en_US: "Natural language query agent that can perform various Weaviate operations"

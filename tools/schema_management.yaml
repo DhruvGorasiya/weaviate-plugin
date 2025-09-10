@@ -1,3 +1,21 @@
+identity:
+  name: "schema_management"
+  author: "weaviate"
+  label:
+    en_US: "Schema Management"
+    zh_Hans: "模式管理"
+    pt_BR: "Gerenciamento de Esquema"
+  description:
+    en_US: "Create, delete, and manage Weaviate collection schemas"
+    zh_Hans: "创建、删除和管理 Weaviate 集合模式"
+    pt_BR: "Criar, excluir e gerenciar esquemas de coleção Weaviate"
+  icon: "icon.svg"
+description:
+  human:
+    en_US: "Create, delete, and manage Weaviate collection schemas"
+    zh_Hans: "创建、删除和管理 Weaviate 集合模式"
+    pt_BR: "Criar, excluir e gerenciar esquemas de coleção Weaviate"
+  llm: "Manage Weaviate collection schemas including creation, deletion, and inspection"
 parameters:
   - name: "operation"
     type: "select"
@@ -20,8 +38,12 @@ parameters:
           en_US: "Get Stats"
     label:
       en_US: "Operation"
+      zh_Hans: "操作"
+      pt_BR: "Operação"
     human_description:
       en_US: "Type of schema operation to perform"
+      zh_Hans: "要执行的模式操作类型"
+      pt_BR: "Tipo de operação de esquema para executar"
     llm_description: "The type of schema management operation to perform"
     form: llm
 
@@ -30,27 +52,42 @@ parameters:
     required: false
     label:
       en_US: "Collection Name"
+      zh_Hans: "集合名称"
+      pt_BR: "Nome da Coleção"
     human_description:
-      en_US: "Name of the Weaviate collection (letters, digits, underscores; required for most operations)"
+      en_US: "Name of the Weaviate collection (required for most operations)"
+      zh_Hans: "Weaviate 集合名称（大多数操作需要）"
+      pt_BR: "Nome da coleção Weaviate (necessário para a maioria das operações)"
     llm_description: "The name of the Weaviate collection to operate on"
-    form: form
+    form: llm
 
   - name: "properties"
     type: "string"
     required: false
     label:
       en_US: "Properties"
+      zh_Hans: "属性"
+      pt_BR: "Propriedades"
     human_description:
-      en_US: "JSON object or array of property definitions for collection creation"
-    llm_description: "JSON object or array of property definitions for creating a new collection"
-    form: form
+      en_US: "JSON array of property definitions for collection creation"
+      zh_Hans: "用于集合创建的属性定义的 JSON 数组"
+      pt_BR: "Array JSON de definições de propriedades para criação de coleção"
+    llm_description: "JSON array of property definitions for creating a new collection"
+    form: llm
 
   - name: "vectorizer"
     type: "string"
     required: false
     label:
       en_US: "Vectorizer"
+      zh_Hans: "向量化器"
+      pt_BR: "Vetorizador"
     human_description:
-      en_US: "Vectorizer config (e.g., self_provided, text2vec-openai, text2vec-transformers)"
+      en_US: "Vectorizer configuration for the collection (optional)"
+      zh_Hans: "集合的向量化器配置（可选）"
+      pt_BR: "Configuração do vetorizador para a coleção (opcional)"
     llm_description: "Optional vectorizer configuration for the collection"
-    form: form
+    form: llm
+extra:
+  python:
+    source: tools/schema_management.py

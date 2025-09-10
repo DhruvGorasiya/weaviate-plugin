@@ -5,6 +5,11 @@ identity:
     en_US: "Vector Search"
     zh_Hans: "向量搜索"
     pt_BR: "Busca Vetorial"
+  description:
+    en_US: "Perform vector similarity search in Weaviate collections"
+    zh_Hans: "在 Weaviate 集合中执行向量相似性搜索"
+    pt_BR: "Execute busca de similaridade vetorial em coleções Weaviate"
+  icon: "icon.svg"
 description:
   human:
     en_US: "Perform vector similarity search in Weaviate collections"

@@ -5,6 +5,11 @@ identity:
     en_US: "Keyword Search"
     zh_Hans: "关键词搜索"
     pt_BR: "Busca por Palavras-chave"
+  description:
+    en_US: "Perform BM25 keyword search in Weaviate collections"
+    zh_Hans: "在 Weaviate 集合中执行 BM25 关键词搜索"
+    pt_BR: "Execute busca por palavras-chave BM25 em coleções Weaviate"
+  icon: "icon.svg"
 description:
   human:
     en_US: "Perform BM25 keyword search in Weaviate collections"

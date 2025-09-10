@@ -5,6 +5,11 @@ identity:
     en_US: "Data Management"
     zh_Hans: "数据管理"
     pt_BR: "Gerenciamento de Dados"
+  description:
+    en_US: "Insert, update, delete, and retrieve objects in Weaviate collections"
+    zh_Hans: "在 Weaviate 集合中插入、更新、删除和检索对象"
+    pt_BR: "Inserir, atualizar, excluir e recuperar objetos em coleções Weaviate"
+  icon: "icon.svg"
 description:
   human:
     en_US: "Insert, update, delete, and retrieve objects in Weaviate collections"

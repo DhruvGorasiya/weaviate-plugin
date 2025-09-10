@@ -1,0 +1,16 @@
+# Python bytecode files
+__pycache__/
+**/__pycache__/
+*.pyc
+**/*.pyc
+*.pyo
+**/*.pyo
+*.pyd
+**/*.pyd
+
+.DS_Store
+
+./provider/__pycache__/
+tools/__pycache__/
+models/__pycache__/
+utils/__pycache__/

@@ -29,23 +29,12 @@ resource:
       moderation: true
     app:
       enabled: true
-provider:
-  path: provider/weaviate_plugin.py
-  config: provider/weaviate_plugin.yaml
-tools:
-  - path: tools/data_management.py
-    config: tools/data_management.yaml
-  - path: tools/vector_search.py
-    config: tools/vector_search.yaml
-  - path: tools/keyword_search.py
-    config: tools/keyword_search.yaml
-  - path: tools/generative_search.py
-    config: tools/generative_search.yaml
-  - path: tools/schema_management.py
-    config: tools/schema_management.yaml
-  # - path: tools/query_agent.py
-  #   config: tools/query_agent.yaml   # only if you actually include it
-  # add others
+plugins:
+  tools:
+    - provider/weaviate_plugin.yaml
+  extra:
+    python:
+      source: provider/weaviate_plugin.py
 meta:
   version: 0.0.1
   arch:

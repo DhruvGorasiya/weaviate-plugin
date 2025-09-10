@@ -9,7 +9,7 @@ identity:
     en_US: "Connect to Weaviate vector database for semantic search, data management, and AI-powered applications"
     zh_Hans: "连接到 Weaviate 向量数据库，用于语义搜索、数据管理和 AI 驱动的应用程序"
     pt_BR: "Conecte-se ao banco de dados vetorial Weaviate para busca semântica, gerenciamento de dados e aplicações de IA"
-  icon: "_assets/icon.svg"
+  icon: "icon.svg"
 
 credentials_schema:
   - name: "url"
@@ -20,9 +20,9 @@ credentials_schema:
       zh_Hans: "https://your-weaviate-instance.com"
       pt_BR: "https://your-weaviate-instance.com"
     help:
-      en_US: "Weaviate endpoint, e.g. https://your-weaviate-instance.com"
-      zh_Hans: "Weaviate 端点，例如 https://your-weaviate-instance.com"
-      pt_BR: "Endpoint do Weaviate, ex.: https://your-weaviate-instance.com"
+      en_US: "The URL of your Weaviate instance"
+      zh_Hans: "您的 Weaviate 实例的 URL"
+      pt_BR: "A URL da sua instância Weaviate"
     label:
       en_US: "Weaviate URL"
       zh_Hans: "Weaviate URL"
@@ -43,6 +43,14 @@ credentials_schema:
       zh_Hans: "API 密钥"
       pt_BR: "Chave API"
 
+tools:
+  - tools/vector_search.yaml
+  - tools/hybrid_search.yaml
+  - tools/keyword_search.yaml
+  - tools/generative_search.yaml
+  - tools/query_agent.yaml
+  - tools/data_management.yaml
+  - tools/schema_management.yaml
 extra:
   python:
     source: provider/weaviate_plugin.py

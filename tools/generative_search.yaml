@@ -5,6 +5,11 @@ identity:
     en_US: "Generative Search"
     zh_Hans: "生成式搜索"
     pt_BR: "Busca Generativa"
+  description:
+    en_US: "Perform generative search with RAG capabilities using Weaviate and LLM"
+    zh_Hans: "使用 Weaviate 和 LLM 执行具有 RAG 功能的生成式搜索"
+    pt_BR: "Execute busca generativa com capacidades RAG usando Weaviate e LLM"
+  icon: "icon.svg"
 description:
   human:
     en_US: "Perform generative search with RAG capabilities using Weaviate and LLM"
