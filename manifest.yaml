@@ -41,6 +41,10 @@ tools:
     config: tools/keyword_search.yaml
   - path: tools/generative_search.py
     config: tools/generative_search.yaml
+  - path: tools/schema_management.py
+    config: tools/schema_management.yaml
+  # - path: tools/query_agent.py
+  #   config: tools/query_agent.yaml   # only if you actually include it
   # add others
 meta:
   version: 0.0.1

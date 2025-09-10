@@ -1,37 +1,67 @@
 from typing import Any
-import weaviate
+import logging
+
 from dify_plugin import ToolProvider
 from dify_plugin.errors.tool import ToolProviderCredentialValidationError
-try:
-    from ..utils.validators import validate_weaviate_url, validate_api_key
-except ImportError:
-    from utils.validators import validate_weaviate_url, validate_api_key
+
+# Prefer absolute import; your try/except fallback is fine if you want to keep it
+from utils.validators import validate_weaviate_url, validate_api_key
+from utils.client import WeaviateClient
+
+logger = logging.getLogger(__name__)
 
 class WeaviatePluginProvider(ToolProvider):
-    
+    """
+    Validates credentials by attempting a lightweight connection and a simple call.
+    """
+
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
-        try:
-            url = credentials.get('url', '')
-            api_key = credentials.get('api_key', '')
-            
-            if not validate_weaviate_url(url):
-                raise ValueError("Invalid Weaviate URL format")
-            
-            if api_key and not validate_api_key(api_key):
-                raise ValueError("Invalid API key format")
-            
-            auth_config = weaviate.AuthApiKey(api_key=api_key) if api_key else None
-            
-            client = weaviate.connect_to_local(
-                url=url,
-                auth_credentials=auth_config,
-                timeout_config=(5, 10)
+        url = (credentials.get("url") or "").strip()
+        api_key = (credentials.get("api_key") or "").strip()
+
+        # Basic format checks first (fail fast)
+        if not validate_weaviate_url(url):
+            raise ToolProviderCredentialValidationError(
+                "Invalid Weaviate URL. Expected format like https://your-weaviate-instance.com[:port]"
             )
-            
-            client.close()
-            
+        if api_key and not validate_api_key(api_key):
+            raise ToolProviderCredentialValidationError("Invalid API key value.")
+
+        client = None
+        try:
+            # Use your v4-compliant wrapper (recommended)
+            client = WeaviateClient(url=url, api_key=api_key, timeout=15)
+            wc = client.connect()
+
+            # Health/auth check:
+            # 1) Ensure server is ready
+            if not wc.is_ready():
+                raise ToolProviderCredentialValidationError(
+                    "Weaviate endpoint is reachable but not ready. Please try again later."
+                )
+
+            # 2) Simple authorized call (exercises API key permissions)
+            #    If auth is wrong, this often raises an error we can surface.
+            _ = client.list_collections()
+
+        except ToolProviderCredentialValidationError:
+            # Re-raise our own clear errors
+            raise
+
         except Exception as e:
-            raise ToolProviderCredentialValidationError(str(e))
+            # Normalize any lower-level errors to a user-friendly message
+            msg = str(e) or repr(e)
+            # Add a bit more guidance
+            raise ToolProviderCredentialValidationError(
+                f"Failed to connect to Weaviate at {url}. "
+                f"Verify the URL is correct and the API key (if required) is valid. Details: {msg}"
+            )
+        finally:
+            if client:
+                try:
+                    client.disconnect()
+                except Exception:
+                    logger.debug("Weaviate client disconnect failed quietly", exc_info=True)
 
     #########################################################################################
     # If OAuth is supported, uncomment the following functions.
