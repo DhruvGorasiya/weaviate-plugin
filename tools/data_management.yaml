@@ -1,0 +1,98 @@
+identity:
+  name: "data_management"
+  author: "weaviate"
+  label:
+    en_US: "Data Management"
+    zh_Hans: "数据管理"
+    pt_BR: "Gerenciamento de Dados"
+description:
+  human:
+    en_US: "Insert, update, delete, and retrieve objects in Weaviate collections"
+    zh_Hans: "在 Weaviate 集合中插入、更新、删除和检索对象"
+    pt_BR: "Inserir, atualizar, excluir e recuperar objetos em coleções Weaviate"
+  llm: "Manage data objects in Weaviate database including CRUD operations"
+parameters:
+  - name: "operation"
+    type: "select"
+    required: true
+    options:
+      - value: "insert"
+        label:
+          en_US: "Insert"
+      - value: "update"
+        label:
+          en_US: "Update"
+      - value: "delete"
+        label:
+          en_US: "Delete"
+      - value: "get"
+        label:
+          en_US: "Get"
+      - value: "list_collections"
+        label:
+          en_US: "List Collections"
+    label:
+      en_US: "Operation"
+      zh_Hans: "操作"
+      pt_BR: "Operação"
+    human_description:
+      en_US: "Type of data operation to perform"
+      zh_Hans: "要执行的数据操作类型"
+      pt_BR: "Tipo de operação de dados para executar"
+    llm_description: "The type of data management operation to perform"
+    form: llm
+  - name: "collection_name"
+    type: "string"
+    required: true
+    label:
+      en_US: "Collection Name"
+      zh_Hans: "集合名称"
+      pt_BR: "Nome da Coleção"
+    human_description:
+      en_US: "Name of the Weaviate collection"
+      zh_Hans: "Weaviate 集合名称"
+      pt_BR: "Nome da coleção Weaviate"
+    llm_description: "The name of the Weaviate collection to operate on"
+    form: llm
+  - name: "object_data"
+    type: "string"
+    required: false
+    label:
+      en_US: "Object Data"
+      zh_Hans: "对象数据"
+      pt_BR: "Dados do Objeto"
+    human_description:
+      en_US: "JSON object data for insert/update operations"
+      zh_Hans: "用于插入/更新操作的 JSON 对象数据"
+      pt_BR: "Dados de objeto JSON para operações de inserção/atualização"
+    llm_description: "JSON object data for insert or update operations"
+    form: llm
+  - name: "object_uuid"
+    type: "string"
+    required: false
+    label:
+      en_US: "Object UUID"
+      zh_Hans: "对象 UUID"
+      pt_BR: "UUID do Objeto"
+    human_description:
+      en_US: "UUID of the object for update/delete/get operations"
+      zh_Hans: "用于更新/删除/获取操作的对象 UUID"
+      pt_BR: "UUID do objeto para operações de atualização/exclusão/obtenção"
+    llm_description: "UUID of the object for update, delete, or get operations"
+    form: llm
+  - name: "return_properties"
+    type: "string"
+    required: false
+    label:
+      en_US: "Return Properties"
+      zh_Hans: "返回属性"
+      pt_BR: "Propriedades de Retorno"
+    human_description:
+      en_US: "Comma-separated list of properties to return (optional)"
+      zh_Hans: "要返回的属性的逗号分隔列表（可选）"
+      pt_BR: "Lista separada por vírgula de propriedades para retornar (opcional)"
+    llm_description: "Optional comma-separated list of specific properties to return"
+    form: llm
+extra:
+  python:
+    source: tools/data_management.py

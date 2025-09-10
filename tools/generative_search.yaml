@@ -1,0 +1,147 @@
+identity:
+  name: "generative_search"
+  author: "weaviate"
+  label:
+    en_US: "Generative Search"
+    zh_Hans: "生成式搜索"
+    pt_BR: "Busca Generativa"
+description:
+  human:
+    en_US: "Perform generative search with RAG capabilities using Weaviate and LLM"
+    zh_Hans: "使用 Weaviate 和 LLM 执行具有 RAG 功能的生成式搜索"
+    pt_BR: "Execute busca generativa com capacidades RAG usando Weaviate e LLM"
+  llm: "Search and generate responses using retrieved context from Weaviate with LLM integration"
+parameters:
+  - name: "collection_name"
+    type: "string"
+    required: true
+    label:
+      en_US: "Collection Name"
+      zh_Hans: "集合名称"
+      pt_BR: "Nome da Coleção"
+    human_description:
+      en_US: "Name of the Weaviate collection to search"
+      zh_Hans: "要搜索的 Weaviate 集合名称"
+      pt_BR: "Nome da coleção Weaviate para buscar"
+    llm_description: "The name of the Weaviate collection to perform generative search on"
+    form: llm
+  - name: "query"
+    type: "string"
+    required: true
+    label:
+      en_US: "Query"
+      zh_Hans: "查询"
+      pt_BR: "Consulta"
+    human_description:
+      en_US: "Natural language query for generative search"
+      zh_Hans: "用于生成式搜索的自然语言查询"
+      pt_BR: "Consulta em linguagem natural para busca generativa"
+    llm_description: "Natural language query to search and generate responses for"
+    form: llm
+  - name: "query_vector"
+    type: "string"
+    required: false
+    label:
+      en_US: "Query Vector"
+      zh_Hans: "查询向量"
+      pt_BR: "Vetor de Consulta"
+    human_description:
+      en_US: "Optional vector for similarity search (if not provided, will use text query)"
+      zh_Hans: "用于相似性搜索的可选向量（如果未提供，将使用文本查询）"
+      pt_BR: "Vetor opcional para busca de similaridade (se não fornecido, usará consulta de texto)"
+    llm_description: "Optional vector for similarity search component"
+    form: llm
+  - name: "limit"
+    type: "number"
+    required: false
+    default: 5
+    label:
+      en_US: "Limit"
+      zh_Hans: "限制"
+      pt_BR: "Limite"
+    human_description:
+      en_US: "Maximum number of documents to retrieve for context (1-20)"
+      zh_Hans: "检索上下文的最大文档数 (1-20)"
+      pt_BR: "Número máximo de documentos para recuperar para contexto (1-20)"
+    llm_description: "Maximum number of documents to retrieve as context for generation"
+    form: llm
+  - name: "llm_provider"
+    type: "select"
+    required: false
+    default: "openai"
+    options:
+      - value: "openai"
+        label:
+          en_US: "OpenAI"
+      - value: "anthropic"
+        label:
+          en_US: "Anthropic"
+      - value: "custom"
+        label:
+          en_US: "Custom"
+    label:
+      en_US: "LLM Provider"
+      zh_Hans: "LLM 提供商"
+      pt_BR: "Provedor LLM"
+    human_description:
+      en_US: "LLM provider for generating responses"
+      zh_Hans: "用于生成响应的 LLM 提供商"
+      pt_BR: "Provedor LLM para gerar respostas"
+    llm_description: "LLM provider to use for generating responses"
+    form: llm
+  - name: "llm_model"
+    type: "string"
+    required: false
+    default: "gpt-3.5-turbo"
+    label:
+      en_US: "LLM Model"
+      zh_Hans: "LLM 模型"
+      pt_BR: "Modelo LLM"
+    human_description:
+      en_US: "Specific LLM model to use"
+      zh_Hans: "要使用的特定 LLM 模型"
+      pt_BR: "Modelo LLM específico para usar"
+    llm_description: "Specific LLM model name to use for generation"
+    form: llm
+  - name: "llm_api_key"
+    type: "secret-input"
+    required: false
+    label:
+      en_US: "LLM API Key"
+      zh_Hans: "LLM API 密钥"
+      pt_BR: "Chave API LLM"
+    human_description:
+      en_US: "API key for the LLM provider (if not using system credentials)"
+      zh_Hans: "LLM 提供商的 API 密钥（如果不使用系统凭据）"
+      pt_BR: "Chave API para o provedor LLM (se não usar credenciais do sistema)"
+    llm_description: "API key for the LLM provider"
+    form: llm
+  - name: "where_filter"
+    type: "string"
+    required: false
+    label:
+      en_US: "Where Filter"
+      zh_Hans: "过滤条件"
+      pt_BR: "Filtro Where"
+    human_description:
+      en_US: "JSON filter conditions for the search (optional)"
+      zh_Hans: "搜索的 JSON 过滤条件（可选）"
+      pt_BR: "Condições de filtro JSON para a busca (opcional)"
+    llm_description: "Optional JSON filter conditions to apply to the search"
+    form: llm
+  - name: "return_properties"
+    type: "string"
+    required: false
+    label:
+      en_US: "Return Properties"
+      zh_Hans: "返回属性"
+      pt_BR: "Propriedades de Retorno"
+    human_description:
+      en_US: "Comma-separated list of properties to return (optional)"
+      zh_Hans: "要返回的属性的逗号分隔列表（可选）"
+      pt_BR: "Lista separada por vírgula de propriedades para retornar (opcional)"
+    llm_description: "Optional comma-separated list of specific properties to return"
+    form: llm
+extra:
+  python:
+    source: tools/generative_search.py
