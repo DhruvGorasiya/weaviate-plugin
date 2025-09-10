@@ -12,8 +12,8 @@ description:
   ja_JP: Plugin development to connect weaviate with dify
   zh_Hans: Plugin development to connect weaviate with dify
   pt_BR: Plugin development to connect weaviate with dify
-icon: _assets/icon.svg
-icon_dark: _assets/icon-dark.svg
+icon: icon.svg
+icon_dark: icon-dark.svg
 resource:
   memory: 268435456
   permission:
