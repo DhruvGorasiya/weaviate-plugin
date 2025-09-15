@@ -39,19 +39,35 @@ class WeaviateClient:
         if self._client is not None:
             return self._client
 
-        http_host, http_port, http_secure, grpc_host, grpc_port, grpc_secure = _parse_endpoint(self.url)
-        auth = Auth.api_key(self.api_key) if self.api_key else None
+        # Parse the URL to extract host and port
+        p = urlparse(self.url)
+        host = p.hostname or self.url.replace("https://", "").replace("http://", "")
+        
+        # Check if it's a cloud instance
+        if host.endswith(".weaviate.cloud"):
+            # Use connect_to_weaviate_cloud for cloud instances
+            auth = Auth.api_key(self.api_key) if self.api_key else None
+            self._client = weaviate.connect_to_weaviate_cloud(
+                cluster_url=self.url,
+                auth_credentials=auth,
+            )
+        else:
+            # Use connect_to_custom for self-hosted instances
+            http_secure = (p.scheme == "https")
+            http_port = p.port or (443 if http_secure else 80)
+            grpc_port = 50051  # Different port for gRPC
+            
+            auth = Auth.api_key(self.api_key) if self.api_key else None
+            self._client = weaviate.connect_to_custom(
+                http_host=host,
+                http_port=http_port,
+                http_secure=http_secure,
+                grpc_host=host,
+                grpc_port=grpc_port,
+                grpc_secure=http_secure,
+                auth_credentials=auth,
+            )
 
-        self._client = weaviate.connect_to_custom(
-            http_host=http_host,
-            http_port=http_port,
-            http_secure=http_secure,
-            grpc_host=grpc_host,
-            grpc_port=grpc_port,
-            grpc_secure=grpc_secure,
-            auth_credentials=auth,
-            timeout_config=(10, self.timeout),
-        )
         if not self._client.is_ready():
             raise ConnectionError("Weaviate is not ready")
         return self._client
