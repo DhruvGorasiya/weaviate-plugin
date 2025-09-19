@@ -185,21 +185,41 @@ class WeaviateClient:
             client = self.connect()
             col = client.collections.use(class_name)
             uuids_out: List[str] = []
-            with col.data.batch.dynamic() as batch:
-                for obj in objects:
-                    if not isinstance(obj, dict):
-                        continue
-                    uid = obj.get("id")
-                    props = obj.get("properties") or obj  # allow raw property dicts
-                    vec = obj.get("vector")
-                    vec_payload = {"default": vec} if isinstance(vec, list) else None
-                    batch.add_object(properties=props, uuid=uid, vector=vec_payload)
-                    if uid:
-                        uuids_out.append(str(uid))
+            
+            # Use individual insertions to get UUIDs back
+            for i, obj in enumerate(objects):
+                if not isinstance(obj, dict):
+                    logger.warning(f"Skipping non-dict object at index {i}: {obj}")
+                    continue
+                    
+                uid = obj.get("id")
+                props = obj.get("properties") or obj  # allow raw property dicts
+                vec = obj.get("vector")
+                vec_payload = {"default": vec} if isinstance(vec, list) else None
+                
+                try:
+                    # Insert individual object and get the UUID back
+                    result = col.data.insert(
+                        properties=props,
+                        uuid=uid,
+                        vector=vec_payload
+                    )
+                    
+                    # The result IS the UUID object, convert it to string
+                    inserted_uuid = str(result)
+                    uuids_out.append(inserted_uuid)
+                    logger.debug(f"Successfully inserted object {i+1}/{len(objects)} with UUID: {inserted_uuid}")
+                    
+                except Exception as obj_error:
+                    logger.error(f"Failed to insert object {i+1}/{len(objects)}: {obj_error}")
+                    logger.error(f"Object data: {obj}")
+                    raise obj_error  # Re-raise to be caught by outer try-catch
+            
             return uuids_out
         except Exception as e:
             logger.error(f"Error inserting objects to {class_name}: {e}")
-            return []
+            logger.error(f"Collection exists: {client.collections.exists(class_name) if 'client' in locals() else 'Unknown'}")
+            raise e  # Re-raise the exception with details
 
     def update_object(self, class_name: str, uuid: str, properties: Dict[str, Any]) -> bool:
         try:

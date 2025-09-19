@@ -85,14 +85,19 @@ class DataManagementTool(Tool):
                         ))
                         return
 
-                    uuids = client.insert_objects(collection_name, payload)
-                    if uuids:
-                        yield self.create_json_message(create_success_response(
-                            data={"inserted_uuids": uuids, "count": len(uuids), "collection": collection_name},
-                            message=f"Successfully inserted {len(uuids)} objects"
+                    try:
+                        uuids = client.insert_objects(collection_name, payload)
+                        if uuids:
+                            yield self.create_json_message(create_success_response(
+                                data={"inserted_uuids": uuids, "count": len(uuids), "collection": collection_name},
+                                message=f"Successfully inserted {len(uuids)} objects"
+                            ))
+                        else:
+                            yield self.create_json_message(create_error_response("Failed to insert objects - no UUIDs returned"))
+                    except Exception as insert_error:
+                        yield self.create_json_message(create_error_response(
+                            f"Insert failed: {str(insert_error)}"
                         ))
-                    else:
-                        yield self.create_json_message(create_error_response("Failed to insert objects"))
                     return
 
                 # ---- update ----
