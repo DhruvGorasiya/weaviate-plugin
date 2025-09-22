@@ -119,10 +119,10 @@ class WeaviateClient:
         properties: List[Dict[str, Any]],
         vectorizer: Optional[str] = None,
         vector_index_config: Optional[Dict[str, Any]] = None,
+        description: Optional[str] = None,
+        multi_tenancy: Optional[bool] = None,
     ) -> bool:
-        """
-        Note: For Dify, default to self-provided vectors unless user explicitly sets a vectorizer.
-        """
+        """Create a new collection with optional multi-tenancy and description"""
         try:
             client = self.connect()
             props: List[Property] = []
@@ -140,12 +140,24 @@ class WeaviateClient:
             else:
                 vec_cfg = Configure.Vectors.self_provided()
 
+            # Multi-tenancy configuration
+            multi_tenancy_cfg = None
+            if multi_tenancy is not None:
+                multi_tenancy_cfg = Configure.multi_tenancy(enabled=bool(multi_tenancy))
+
             client.collections.create(
                 name=class_name,
                 properties=props,
                 vector_config=vec_cfg,
+                description=description,
+                multi_tenancy_config=multi_tenancy_cfg,
             )
-            # vector_index_config can be added when needed via col.config.update
+            
+            # If vector_index_config is provided, update it post-creation
+            if vector_index_config:
+                col = client.collections.use(class_name)
+                col.config.update(vector_index_config=vector_index_config)
+            
             return True
         except Exception as e:
             logger.error(f"Error creating collection {class_name}: {e}")
@@ -172,6 +184,52 @@ class WeaviateClient:
         except Exception as e:
             logger.error(f"Error getting stats for {class_name}: {e}")
             return None
+
+    def collection_exists(self, class_name: str) -> bool:
+        """Check if a collection exists"""
+        try:
+            client = self.connect()
+            return client.collections.exists(class_name)
+        except Exception as e:
+            logger.error(f"Error checking if collection {class_name} exists: {e}")
+            return False
+
+    def add_property(self, class_name: str, prop: Dict[str, Any]) -> bool:
+        """Add a property to an existing collection"""
+        try:
+            client = self.connect()
+            col = client.collections.use(class_name)
+            
+            dt_raw = (prop.get("data_type") or "text").upper()
+            dt = getattr(DataType, dt_raw, DataType.TEXT)
+            
+            tok = None
+            if prop.get("tokenization"):
+                tok = getattr(Tokenization, prop["tokenization"].upper(), None)
+            
+            col.config.add_property(Property(
+                name=prop["name"],
+                data_type=dt,
+                tokenization=tok
+            ))
+            return True
+        except Exception as e:
+            logger.error(f"Error adding property to {class_name}: {e}")
+            return False
+
+    def update_collection_config(self, class_name: str, cfg_updates: Dict[str, Any]) -> bool:
+        """Update collection configuration (limited to updatable fields)"""
+        try:
+            client = self.connect()
+            col = client.collections.use(class_name)
+            
+            # Only allow fields that Weaviate supports updating post-creation
+            # Common ones: vector index params, description, etc.
+            col.config.update(**cfg_updates)
+            return True
+        except Exception as e:
+            logger.error(f"Error updating config for {class_name}: {e}")
+            return False
 
     # ---------- Data Objects ----------
 
@@ -247,11 +305,13 @@ class WeaviateClient:
                 return False
             logger.error(f"Delete error: {e}")
             return False
+
     def get_object(self, class_name: str, uuid: str, return_properties: Optional[List[str]] = None) -> Optional[Dict[str, Any]]:
         try:
             client = self.connect()
             col = client.collections.use(class_name)
-            obj = col.data.object.get_by_id(uuid, return_properties=return_properties)
+            # Fix: Use col.query.fetch_object_by_id instead of col.data.get_by_id
+            obj = col.query.fetch_object_by_id(uuid, return_properties=return_properties)
             if obj is None:
                 return None
             return {
@@ -267,10 +327,29 @@ class WeaviateClient:
 
     def _build_where(self, where_filter: Optional[Dict[str, Any]]):
         """
-        Accepts dicts that match Weaviate Filter JSON structure or simple {field, operator, value}.
-        Your tools already validate the shape; assume pass-through.
+        Builds a proper Weaviate Filter object from various input formats.
         """
-        return where_filter or None
+        if not where_filter:
+            return None
+            
+        # If it's already a Filter object, return as-is
+        if hasattr(where_filter, 'to_dict'):
+            return where_filter
+            
+        # Convert simple {field: value} format to Filter
+        if len(where_filter) == 1:
+            field, value = next(iter(where_filter.items()))
+            return Filter.by_property(field).equal(value)
+        
+        # For multiple conditions, create an AND filter
+        conditions = []
+        for field, value in where_filter.items():
+            conditions.append(Filter.by_property(field).equal(value))
+        
+        if len(conditions) == 1:
+            return conditions[0]
+        else:
+            return Filter.and_filters(*conditions)
 
     def vector_search(
         self,
@@ -369,3 +448,233 @@ class WeaviateClient:
         except Exception as e:
             logger.error(f"Error performing text search in {class_name}: {e}")
             return []
+
+    def insert_objects_batch(
+        self, 
+        class_name: str, 
+        objects: List[Dict[str, Any]], 
+        tenant: Optional[str] = None,
+        batch_size: int = 100,
+        consistency_level: Optional[str] = None,
+        conflict_mode: str = "error"
+    ) -> Dict[str, Any]:
+        """Insert objects in batch with advanced options"""
+        try:
+            client = self.connect()
+            col = client.collections.use(class_name)
+            
+            if tenant:
+                col = col.with_tenant(tenant)
+            
+            inserted_count = 0
+            failed_count = 0
+            errors = []
+            
+            with col.data.batch.dynamic() as batch:
+                for i, obj in enumerate(objects):
+                    try:
+                        uid = obj.get("id")
+                        props = obj.get("properties") or obj
+                        vec = obj.get("vector")
+                        vec_payload = {"default": vec} if isinstance(vec, list) else None
+                        
+                        batch.add_object(
+                            properties=props,
+                            uuid=uid,
+                            vector=vec_payload
+                        )
+                        inserted_count += 1
+                        
+                    except Exception as e:
+                        failed_count += 1
+                        errors.append({
+                            "index": i,
+                            "error": str(e),
+                            "object": obj
+                        })
+            
+            return {
+                "inserted_count": inserted_count,
+                "failed_count": failed_count,
+                "errors": errors,
+                "total_processed": len(objects)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in batch insert for {class_name}: {e}")
+            return {
+                "inserted_count": 0,
+                "failed_count": len(objects),
+                "errors": [{"index": 0, "error": str(e), "object": None}],
+                "total_processed": len(objects)
+            }
+
+    def list_objects(
+        self,
+        class_name: str,
+        where_filter: Optional[Dict[str, Any]] = None,
+        limit: int = 100,
+        after: Optional[str] = None,
+        sort: Optional[List[Dict[str, str]]] = None,
+        tenant: Optional[str] = None,
+        return_properties: Optional[List[str]] = None,
+        include_vector: bool = False,
+        return_additional: Optional[List[str]] = None
+    ) -> List[Dict[str, Any]]:
+        """List objects with filtering, pagination, and sorting"""
+        try:
+            client = self.connect()
+            col = client.collections.use(class_name)
+            
+            if tenant:
+                col = col.with_tenant(tenant)
+            
+            # Build metadata query
+            metadata_fields = []
+            if return_additional:
+                metadata_fields.extend(return_additional)
+            if include_vector:
+                metadata_fields.append("vector")
+            
+            metadata_query = MetadataQuery(*metadata_fields) if metadata_fields else None
+            
+            # Build proper where filter using Filter class
+            built_filters = self._build_where(where_filter)
+            
+            # Execute query with correct parameters
+            result = col.query.fetch_objects(
+                filters=built_filters,  # Changed from where=where_filter
+                limit=limit,
+                after=after,
+                sort=sort,
+                return_properties=return_properties,
+                return_metadata=metadata_query,
+                include_vector=include_vector
+            )
+            
+            objects = []
+            for obj in result.objects:
+                obj_data = {
+                    "uuid": str(obj.uuid),
+                    "properties": obj.properties,
+                    "metadata": {}
+                }
+                
+                if obj.metadata:
+                    if include_vector and hasattr(obj.metadata, 'vector'):
+                        obj_data["vector"] = obj.metadata.vector
+                    if return_additional:
+                        for field in return_additional:
+                            if hasattr(obj.metadata, field):
+                                obj_data["metadata"][field] = getattr(obj.metadata, field)
+                
+                # Filter return properties if specified
+                if return_properties:
+                    filtered_properties = {}
+                    for prop in return_properties:
+                        if prop in obj.properties:
+                            filtered_properties[prop] = obj.properties[prop]
+                    obj_data["properties"] = filtered_properties
+                
+                objects.append(obj_data)
+            
+            return objects
+            
+        except Exception as e:
+            logger.error(f"Error listing objects from {class_name}: {e}")
+            return []
+
+    def delete_by_filter(
+        self,
+        class_name: str,
+        where_filter: Dict[str, Any],
+        tenant: Optional[str] = None,
+        dry_run: bool = False
+    ) -> Dict[str, Any]:
+        """Delete objects by filter with optional dry run"""
+        try:
+            client = self.connect()
+            col = client.collections.use(class_name)
+            
+            if tenant:
+                col = col.with_tenant(tenant)
+            
+            if dry_run:
+                # Count objects that would be deleted
+                result = col.query.fetch_objects(where=where_filter, limit=1000)
+                count = len(result.objects)
+                return {
+                    "deleted_count": 0,
+                    "would_delete_count": count,
+                    "dry_run": True
+                }
+            else:
+                # Actually delete
+                result = col.data.delete_many(where=where_filter)
+                return {
+                    "deleted_count": result.successful,
+                    "failed_count": result.failed,
+                    "dry_run": False
+                }
+                
+        except Exception as e:
+            logger.error(f"Error deleting objects by filter from {class_name}: {e}")
+            return {
+                "deleted_count": 0,
+                "failed_count": 1,
+                "error": str(e),
+                "dry_run": dry_run
+            }
+
+    def replace_object(
+        self,
+        class_name: str,
+        uuid: str,
+        properties: Dict[str, Any],
+        vector: Optional[List[float]] = None,
+        tenant: Optional[str] = None
+    ) -> bool:
+        """Replace entire object (overwrite all properties)"""
+        try:
+            client = self.connect()
+            col = client.collections.use(class_name)
+            
+            if tenant:
+                col = col.with_tenant(tenant)
+            
+            vec_payload = {"default": vector} if vector else None
+            col.data.replace(
+                uuid=uuid,
+                properties=properties,
+                vector=vec_payload
+            )
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error replacing object {uuid} in {class_name}: {e}")
+            return False
+
+    def update_vector(
+        self,
+        class_name: str,
+        uuid: str,
+        vector: List[float],
+        tenant: Optional[str] = None
+    ) -> bool:
+        """Update only the vector of an object"""
+        try:
+            client = self.connect()
+            col = client.collections.use(class_name)
+            
+            if tenant:
+                col = col.with_tenant(tenant)
+            
+            col.data.update(
+                uuid=uuid,
+                vector={"default": vector}
+            )
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating vector for object {uuid} in {class_name}: {e}")
+            return False

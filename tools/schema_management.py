@@ -16,6 +16,9 @@ _ALLOWED_OPS = {
     "delete_collection",
     "get_schema",
     "get_stats",
+    "exists",
+    "add_property",
+    "update_config",
 }
 
 # Optional: restrict vectorizers we recognize; None/self_provided is default
@@ -101,10 +104,17 @@ class SchemaManagementTool(Tool):
                         ))
                         return
 
+                    # Get optional parameters
+                    description = (tool_parameters.get("description") or "").strip() or None
+                    multi_tenancy = tool_parameters.get("multi_tenancy")
+
                     created = client.create_collection(
                         class_name=collection_name,
                         properties=props,
-                        vectorizer=vectorizer,  # None means self-provided vectors (Dify-friendly)
+                        vectorizer=vectorizer,
+                        vector_index_config=None,  # Can be exposed later if needed
+                        description=description,
+                        multi_tenancy=bool(multi_tenancy) if multi_tenancy is not None else None,
                     )
                     if created:
                         yield self.create_json_message(create_success_response(
@@ -156,6 +166,71 @@ class SchemaManagementTool(Tool):
                     else:
                         yield self.create_json_message(create_error_response(
                             f"Failed to get stats for '{collection_name}'"
+                        ))
+                    return
+
+                # ---- exists ----
+                if operation == "exists":
+                    exists = client.collection_exists(collection_name)
+                    yield self.create_json_message(create_success_response(
+                        data={"exists": exists, "collection_name": collection_name},
+                        message=f"Collection '{collection_name}' exists: {exists}"
+                    ))
+                    return
+
+                # ---- add_property ----
+                if operation == "add_property":
+                    prop_str = (tool_parameters.get("property") or "").strip()
+                    if not prop_str:
+                        yield self.create_json_message(create_error_response(
+                            "Property definition is required for add_property operation"
+                        ))
+                        return
+                    
+                    prop = safe_json_parse(prop_str)
+                    if not isinstance(prop, dict) or "name" not in prop or "data_type" not in prop:
+                        yield self.create_json_message(create_error_response(
+                            "Invalid property format. Provide JSON with 'name' and 'data_type' fields"
+                        ))
+                        return
+                    
+                    success = client.add_property(collection_name, prop)
+                    if success:
+                        yield self.create_json_message(create_success_response(
+                            data={"collection_name": collection_name, "property": prop["name"]},
+                            message=f"Property '{prop['name']}' added to collection '{collection_name}'"
+                        ))
+                    else:
+                        yield self.create_json_message(create_error_response(
+                            f"Failed to add property '{prop['name']}' to collection '{collection_name}'"
+                        ))
+                    return
+
+                # ---- update_config ----
+                if operation == "update_config":
+                    cfg_str = (tool_parameters.get("config") or "").strip()
+                    if not cfg_str:
+                        yield self.create_json_message(create_error_response(
+                            "Config updates are required for update_config operation"
+                        ))
+                        return
+                    
+                    cfg = safe_json_parse(cfg_str)
+                    if not isinstance(cfg, dict):
+                        yield self.create_json_message(create_error_response(
+                            "Invalid config format. Provide JSON object with configuration updates"
+                        ))
+                        return
+                    
+                    success = client.update_collection_config(collection_name, cfg)
+                    if success:
+                        yield self.create_json_message(create_success_response(
+                            data={"collection_name": collection_name, "applied_config": cfg},
+                            message=f"Configuration updated for collection '{collection_name}'"
+                        ))
+                    else:
+                        yield self.create_json_message(create_error_response(
+                            f"Failed to update configuration for collection '{collection_name}'"
                         ))
                     return
 
