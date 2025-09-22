@@ -32,29 +32,29 @@ parameters:
     form: llm
   - name: "query"
     type: "string"
-    required: true
+    required: false
     label:
       en_US: "Query Text"
       zh_Hans: "查询文本"
       pt_BR: "Texto da Consulta"
     human_description:
-      en_US: "Text query for keyword search"
-      zh_Hans: "用于关键词搜索的文本查询"
-      pt_BR: "Consulta de texto para busca por palavras-chave"
-    llm_description: "Text query for keyword search component"
+      en_US: "Text query for keyword search (required if query_vector not provided)"
+      zh_Hans: "用于关键词搜索的文本查询（如果未提供查询向量则为必需）"
+      pt_BR: "Consulta de texto para busca por palavras-chave (obrigatório se query_vector não fornecido)"
+    llm_description: "Text query for keyword search component (required if query_vector not provided)"
     form: llm
   - name: "query_vector"
     type: "string"
-    required: true
+    required: false
     label:
       en_US: "Query Vector"
       zh_Hans: "查询向量"
       pt_BR: "Vetor de Consulta"
     human_description:
-      en_US: "Comma-separated vector values for similarity search"
-      zh_Hans: "用于相似性搜索的逗号分隔向量值"
-      pt_BR: "Valores vetoriais separados por vírgula para busca de similaridade"
-    llm_description: "Comma-separated list of vector values for vector similarity search"
+      en_US: "Comma-separated vector values for similarity search (required if query not provided)"
+      zh_Hans: "用于相似性搜索的逗号分隔向量值（如果未提供查询则为必需）"
+      pt_BR: "Valores vetoriais separados por vírgula para busca de similaridade (obrigatório se query não fornecido)"
+    llm_description: "Comma-separated list of vector values for vector similarity search (required if query not provided)"
     form: llm
   - name: "alpha"
     type: "number"

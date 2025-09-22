@@ -387,7 +387,7 @@ class WeaviateClient:
         self,
         class_name: str,
         query: str,
-        query_vector: List[float],
+        query_vector: Optional[List[float]] = None,
         alpha: float = 0.7,
         limit: int = 10,
         where_filter: Optional[Dict[str, Any]] = None,
@@ -396,6 +396,46 @@ class WeaviateClient:
         try:
             client = self.connect()
             col = client.collections.use(class_name)
+            
+            # If no query_vector provided, use text search only
+            if query_vector is None:
+                res = col.query.bm25(
+                    query=query,
+                    limit=limit,
+                    filters=self._build_where(where_filter),
+                    return_properties=return_properties,
+                    include_vector=False,
+                )
+                return [
+                    {
+                        "uuid": str(getattr(o, "uuid", "")),
+                        "properties": getattr(o, "properties", None),
+                        "metadata": {"score": 1.0},  # Default score for text-only search
+                    }
+                    for o in (getattr(res, "objects", []) or [])
+                ]
+            
+            # If no query provided, use vector search only
+            if not query.strip():
+                res = col.query.near_vector(
+                    near_vector=query_vector,
+                    limit=limit,
+                    filters=self._build_where(where_filter),
+                    return_properties=return_properties,
+                    return_metadata=MetadataQuery(distance=True),
+                    include_vector=False,
+                    target_vector="default",
+                )
+                return [
+                    {
+                        "uuid": str(getattr(o, "uuid", "")),
+                        "properties": getattr(o, "properties", None),
+                        "metadata": {"distance": getattr(getattr(o, "metadata", None), "distance", None)},
+                    }
+                    for o in (getattr(res, "objects", []) or [])
+                ]
+            
+            # Both query and vector provided - true hybrid search
             res = col.query.hybrid(
                 query=query,
                 vector=query_vector,

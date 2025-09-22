@@ -22,8 +22,14 @@ class HybridSearchTool(Tool):
             if not collection_name:
                 yield self.create_text_message("Error: Collection name is required")
                 return
-            if not query:
-                yield self.create_text_message("Error: Query text is required")
+
+            # Check that at least one of query or query_vector is provided
+            qv_raw = tool_parameters.get('query_vector', '')
+            if isinstance(qv_raw, str):
+                qv_raw = qv_raw.strip()
+            
+            if not query and not qv_raw:
+                yield self.create_text_message("Error: Either query text or query vector is required")
                 return
 
             # alpha - safe cast from string
@@ -49,9 +55,8 @@ class HybridSearchTool(Tool):
                 return
 
             # query_vector - accept JSON array OR CSV string
-            qv_raw = tool_parameters.get('query_vector', '')
-            if isinstance(qv_raw, str):
-                qv_raw = qv_raw.strip()
+            query_vector = None
+            if qv_raw:
                 if qv_raw.startswith('['):
                     query_vector = safe_json_parse(qv_raw)
                 else:
@@ -60,11 +65,9 @@ class HybridSearchTool(Tool):
                     except ValueError:
                         yield self.create_text_message("Error: Invalid query vector. Use JSON array or comma-separated numbers")
                         return
-            else:
-                query_vector = qv_raw
-            if not validate_vector(query_vector):
-                yield self.create_text_message("Error: Query vector must be a non-empty list of numbers")
-                return
+                if not validate_vector(query_vector):
+                    yield self.create_text_message("Error: Query vector must be a non-empty list of numbers")
+                    return
 
             where_filter = None
             if where_filter_str:
