@@ -358,6 +358,7 @@ class WeaviateClient:
         limit: int = 10,
         where_filter: Optional[Dict[str, Any]] = None,
         return_properties: Optional[List[str]] = None,
+        target_vector: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         try:
             client = self.connect()
@@ -369,7 +370,7 @@ class WeaviateClient:
                 return_properties=return_properties,
                 return_metadata=MetadataQuery(distance=True),
                 include_vector=False,
-                target_vector="default",
+                target_vector=target_vector or "default",
             )
             return [
                 {
@@ -392,6 +393,7 @@ class WeaviateClient:
         limit: int = 10,
         where_filter: Optional[Dict[str, Any]] = None,
         return_properties: Optional[List[str]] = None,
+        target_vector: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         try:
             client = self.connect()
@@ -424,7 +426,7 @@ class WeaviateClient:
                     return_properties=return_properties,
                     return_metadata=MetadataQuery(distance=True),
                     include_vector=False,
-                    target_vector="default",
+                    target_vector=target_vector or "default",
                 )
                 return [
                     {
@@ -444,6 +446,7 @@ class WeaviateClient:
                 filters=self._build_where(where_filter),
                 return_properties=return_properties,
                 return_metadata=MetadataQuery(score=True),
+                target_vector=target_vector or "default",
             )
             return [
                 {
@@ -465,6 +468,7 @@ class WeaviateClient:
         where_filter: Optional[Dict[str, Any]] = None,
         return_properties: Optional[List[str]] = None,
         search_properties: Optional[List[str]] = None,
+        target_vector: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         try:
             client = self.connect()

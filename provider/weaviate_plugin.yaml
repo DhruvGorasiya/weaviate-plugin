@@ -42,6 +42,36 @@ credentials_schema:
       en_US: "API Key"
       zh_Hans: "API 密钥"
       pt_BR: "Chave API"
+  - name: "openai_api_key"
+    type: "secret-input"
+    required: false
+    placeholder:
+      en_US: "Your OpenAI API key (for generative search)"
+      zh_Hans: "您的 OpenAI API 密钥（用于生成式搜索）"
+      pt_BR: "Sua chave API OpenAI (para busca generativa)"
+    help:
+      en_US: "OpenAI API key for generative search capabilities"
+      zh_Hans: "用于生成式搜索功能的 OpenAI API 密钥"
+      pt_BR: "Chave API OpenAI para capacidades de busca generativa"
+    label:
+      en_US: "OpenAI API Key"
+      zh_Hans: "OpenAI API 密钥"
+      pt_BR: "Chave API OpenAI"
+  - name: "anthropic_api_key"
+    type: "secret-input"
+    required: false
+    placeholder:
+      en_US: "Your Anthropic API key (for generative search)"
+      zh_Hans: "您的 Anthropic API 密钥（用于生成式搜索）"
+      pt_BR: "Sua chave API Anthropic (para busca generativa)"
+    help:
+      en_US: "Anthropic API key for generative search capabilities"
+      zh_Hans: "用于生成式搜索功能的 Anthropic API 密钥"
+      pt_BR: "Chave API Anthropic para capacidades de busca generativa"
+    label:
+      en_US: "Anthropic API Key"
+      zh_Hans: "Anthropic API 密钥"
+      pt_BR: "Chave API Anthropic"
 
 tools:
   - tools/vector_search.yaml

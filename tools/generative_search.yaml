@@ -6,147 +6,245 @@ identity:
     zh_Hans: "生成式搜索"
     pt_BR: "Busca Generativa"
   description:
-    en_US: "Perform generative search with RAG capabilities using Weaviate and LLM"
-    zh_Hans: "使用 Weaviate 和 LLM 执行具有 RAG 功能的生成式搜索"
-    pt_BR: "Execute busca generativa com capacidades RAG usando Weaviate e LLM"
+    en_US: "Perform generative search (Weaviate native or client-side RAG)."
+    zh_Hans: "执行生成式搜索（Weaviate 原生或客户端 RAG）。"
+    pt_BR: "Execute busca generativa (nativa do Weaviate ou RAG no cliente)."
   icon: "icon.svg"
+
+credentials:
+  - name: "openai_api_key"
+    type: "secret-input"
+    required: false
+    label:
+      en_US: "OpenAI API Key"
+  - name: "anthropic_api_key"
+    type: "secret-input"
+    required: false
+    label:
+      en_US: "Anthropic API Key"
+
 description:
   human:
-    en_US: "Perform generative search with RAG capabilities using Weaviate and LLM"
-    zh_Hans: "使用 Weaviate 和 LLM 执行具有 RAG 功能的生成式搜索"
-    pt_BR: "Execute busca generativa com capacidades RAG usando Weaviate e LLM"
-  llm: "Search and generate responses using retrieved context from Weaviate with LLM integration"
+    en_US: "Perform generative search using Weaviate for retrieval and external LLM for generation. Supports both single-document and multi-document processing."
+    zh_Hans: "使用 Weaviate 进行检索和外部 LLM 进行生成的生成式搜索。支持单文档和多文档处理。"
+    pt_BR: "Execute busca generativa usando Weaviate para recuperação e LLM externo para geração. Suporta processamento de documento único e múltiplos documentos."
+  llm: "Search Weaviate for relevant documents and generate responses using an external LLM. Can process each document individually or all documents together."
+
 parameters:
   - name: "collection_name"
     type: "string"
     required: true
     label:
       en_US: "Collection Name"
-      zh_Hans: "集合名称"
-      pt_BR: "Nome da Coleção"
     human_description:
       en_US: "Name of the Weaviate collection to search"
-      zh_Hans: "要搜索的 Weaviate 集合名称"
-      pt_BR: "Nome da coleção Weaviate para buscar"
     llm_description: "The name of the Weaviate collection to perform generative search on"
     form: llm
+
+  # CHANGED: required -> false (conditional required via description)
   - name: "query"
     type: "string"
-    required: true
+    required: false
     label:
       en_US: "Query"
-      zh_Hans: "查询"
-      pt_BR: "Consulta"
     human_description:
-      en_US: "Natural language query for generative search"
-      zh_Hans: "用于生成式搜索的自然语言查询"
-      pt_BR: "Consulta em linguagem natural para busca generativa"
-    llm_description: "Natural language query to search and generate responses for"
+      en_US: "Natural language query. Required for bm25; optional for hybrid; not required for near_vector."
+    llm_description: "For bm25, provide a query. For hybrid, provide a query and/or a query_vector. For near_vector, query is optional."
     form: llm
+
   - name: "query_vector"
     type: "string"
     required: false
     label:
       en_US: "Query Vector"
-      zh_Hans: "查询向量"
-      pt_BR: "Vetor de Consulta"
     human_description:
-      en_US: "Optional vector for similarity search (if not provided, will use text query)"
-      zh_Hans: "用于相似性搜索的可选向量（如果未提供，将使用文本查询）"
-      pt_BR: "Vetor opcional para busca de similaridade (se não fornecido, usará consulta de texto)"
-    llm_description: "Optional vector for similarity search component"
+      en_US: "Vector for similarity search. Provide as JSON array (e.g. [0.1,0.2]) or CSV (0.1,0.2). Required for near_vector; optional for hybrid."
+    llm_description: "JSON array or CSV numbers representing the query embedding."
     form: llm
+
   - name: "limit"
     type: "number"
     required: false
     default: 5
     label:
       en_US: "Limit"
-      zh_Hans: "限制"
-      pt_BR: "Limite"
     human_description:
-      en_US: "Maximum number of documents to retrieve for context (1-20)"
-      zh_Hans: "检索上下文的最大文档数 (1-20)"
-      pt_BR: "Número máximo de documentos para recuperar para contexto (1-20)"
+      en_US: "Maximum documents to retrieve (1–20)."
     llm_description: "Maximum number of documents to retrieve as context for generation"
     form: llm
+
+  # CHANGED: removed "custom"
   - name: "llm_provider"
     type: "select"
     required: false
     default: "openai"
     options:
       - value: "openai"
-        label:
-          en_US: "OpenAI"
+        label: { en_US: "OpenAI" }
       - value: "anthropic"
-        label:
-          en_US: "Anthropic"
-      - value: "custom"
-        label:
-          en_US: "Custom"
-    label:
-      en_US: "LLM Provider"
-      zh_Hans: "LLM 提供商"
-      pt_BR: "Provedor LLM"
+        label: { en_US: "Anthropic" }
+    label: { en_US: "LLM Provider" }
     human_description:
-      en_US: "LLM provider for generating responses"
-      zh_Hans: "用于生成响应的 LLM 提供商"
-      pt_BR: "Provedor LLM para gerar respostas"
-    llm_description: "LLM provider to use for generating responses"
+      en_US: "Provider for text generation (OpenAI or Anthropic)."
+    llm_description: "Provider for text generation."
     form: llm
+
+  # CHANGED: default -> gpt-4o-mini
   - name: "llm_model"
     type: "string"
     required: false
-    default: "gpt-3.5-turbo"
-    label:
-      en_US: "LLM Model"
-      zh_Hans: "LLM 模型"
-      pt_BR: "Modelo LLM"
+    default: "gpt-4o-mini"
+    label: { en_US: "LLM Model" }
     human_description:
-      en_US: "Specific LLM model to use"
-      zh_Hans: "要使用的特定 LLM 模型"
-      pt_BR: "Modelo LLM específico para usar"
-    llm_description: "Specific LLM model name to use for generation"
+      en_US: "Model name for text generation. If using images, choose a vision-capable model (e.g., gpt-4o-mini or Claude 3.5)."
+    llm_description: "LLM model for text generation; must support images when passing 'images'."
     form: llm
+
   - name: "llm_api_key"
     type: "secret-input"
     required: false
-    label:
-      en_US: "LLM API Key"
-      zh_Hans: "LLM API 密钥"
-      pt_BR: "Chave API LLM"
+    label: { en_US: "LLM API Key" }
     human_description:
-      en_US: "API key for the LLM provider (if not using system credentials)"
-      zh_Hans: "LLM 提供商的 API 密钥（如果不使用系统凭据）"
-      pt_BR: "Chave API para o provedor LLM (se não usar credenciais do sistema)"
-    llm_description: "API key for the LLM provider"
+      en_US: "API key for the provider (optional; system credentials used if available)."
+    llm_description: "API key for text generation."
     form: llm
+
   - name: "where_filter"
     type: "string"
     required: false
-    label:
-      en_US: "Where Filter"
-      zh_Hans: "过滤条件"
-      pt_BR: "Filtro Where"
+    label: { en_US: "Where Filter" }
     human_description:
-      en_US: "JSON filter conditions for the search (optional)"
-      zh_Hans: "搜索的 JSON 过滤条件（可选）"
-      pt_BR: "Condições de filtro JSON para a busca (opcional)"
-    llm_description: "Optional JSON filter conditions to apply to the search"
+      en_US: "JSON filter for narrowing search results (optional)."
+    llm_description: "A JSON object specifying filter conditions."
     form: llm
+
   - name: "return_properties"
     type: "string"
     required: false
-    label:
-      en_US: "Return Properties"
-      zh_Hans: "返回属性"
-      pt_BR: "Propriedades de Retorno"
+    label: { en_US: "Return Properties" }
     human_description:
-      en_US: "Comma-separated list of properties to return (optional)"
-      zh_Hans: "要返回的属性的逗号分隔列表（可选）"
-      pt_BR: "Lista separada por vírgula de propriedades para retornar (opcional)"
-    llm_description: "Optional comma-separated list of specific properties to return"
+      en_US: "Comma-separated list of properties to return (optional)."
+    llm_description: "CSV list of properties to project in results."
     form: llm
+
+  - name: "target_vector"
+    type: "string"
+    required: false
+    label: { en_US: "Target Vector" }
+    human_description:
+      en_US: "Named vector to search/generate against (for collections with multiple vectors)."
+    llm_description: "A named vector key if your collection has multiple vector configs."
+    form: llm
+
+  - name: "single_prompt"
+    type: "string"
+    required: false
+    label: { en_US: "Single Prompt" }
+    human_description:
+      en_US: "Template for per-document generation (use {property_name}). Processes each document individually."
+    llm_description: "A template applied to each result independently (e.g., 'Summarize: {content}')."
+    form: llm
+
+  - name: "grouped_task"
+    type: "string"
+    required: false
+    label: { en_US: "Grouped Task" }
+    human_description:
+      en_US: "Template for cross-document generation (use {context}, {query}). Defaults to a standard RAG prompt if not provided."
+    llm_description: "A prompt that consumes all results at once (must include {context}; {query} optional)."
+    form: llm
+
+  - name: "generative_config"
+    type: "string"
+    required: false
+    label: { en_US: "Generative Config" }
+    human_description:
+      en_US: "JSON for LLM params (temperature, max_tokens, top_p, etc.)."
+    llm_description: "JSON dict of generation parameters."
+    form: llm
+
+  - name: "images"
+    type: "string"
+    required: false
+    label: { en_US: "Images" }
+    human_description:
+      en_US: "Base64 images for multimodal prompts (JSON array or CSV). **Requires a vision-capable model.**"
+    llm_description: "Base64 images to include in prompts; ensure the model supports vision."
+    form: llm
+
+  - name: "image_properties"
+    type: "string"
+    required: false
+    label: { en_US: "Image Properties" }
+    human_description:
+      en_US: "Comma-separated property names in Weaviate that contain base64 images to include."
+    llm_description: "Property names from which to auto-collect images for prompts."
+    form: llm
+
+  - name: "return_metadata"
+    type: "boolean"
+    required: false
+    default: false
+    label: { en_US: "Return Metadata" }
+    human_description:
+      en_US: "Include token usage and model info."
+    llm_description: "Return generation metadata for LLM calls."
+    form: llm
+
+  - name: "search_mode"
+    type: "select"
+    required: false
+    default: "bm25"
+    options:
+      - value: "bm25"
+        label: { en_US: "BM25 (Text Search)" }
+      - value: "near_vector"
+        label: { en_US: "Near Vector (Vector Search)" }
+      - value: "hybrid"
+        label: { en_US: "Hybrid (Text + Vector)" }
+    label: { en_US: "Search Mode" }
+    human_description:
+      en_US: "bm25 requires query; near_vector requires query_vector; hybrid requires at least one of query or query_vector."
+    llm_description: "Choose retrieval method: bm25, near_vector, or hybrid."
+    form: llm
+
+  - name: "mode"
+    type: "select"
+    required: false
+    default: "client_rag"
+    options:
+      - value: "client_rag"
+        label: { en_US: "Client RAG (External LLM)" }
+      - value: "weaviate_single"
+        label: { en_US: "Weaviate Single Prompt" }
+      - value: "weaviate_grouped"
+        label: { en_US: "Weaviate Grouped Task" }
+    label: { en_US: "Generation Mode" }
+    human_description:
+      en_US: "Client-side RAG calls your LLM; Weaviate modes use Weaviate’s built-in generation."
+    llm_description: "Pick client_rag for external LLM or weaviate_* for native generation."
+    form: llm
+
+  - name: "alpha"
+    type: "number"
+    required: false
+    default: 0.7
+    label: { en_US: "Alpha (Hybrid Weight)" }
+    human_description:
+      en_US: "0.0 = pure vector, 1.0 = pure text. Used only for hybrid."
+    llm_description: "Hybrid weighting between vector and text signals (0–1)."
+    form: llm
+
+  - name: "search_properties"
+    type: "string"
+    required: false
+    label: { en_US: "Search Properties" }
+    human_description:
+      en_US: "Comma-separated properties to search (BM25 only)."
+    llm_description: "Restrict BM25 search to these properties."
+    form: llm
+
+
 extra:
   python:
     source: tools/generative_search.py
