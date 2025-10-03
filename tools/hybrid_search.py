@@ -1,3 +1,18 @@
+"""
+Hybrid Search Tool for Weaviate Plugin
+
+This module provides a hybrid search tool that combines keyword-based BM25 search
+with vector similarity search in Weaviate. It allows users to leverage both
+textual relevance and semantic similarity for more comprehensive search results.
+
+The hybrid search combines the strengths of both search methods:
+- BM25: Excellent for exact keyword matches and term frequency
+- Vector Search: Excellent for semantic similarity and conceptual understanding
+
+Classes:
+    HybridSearchTool: Main tool class for hybrid search operations
+"""
+
 from collections.abc import Generator
 from typing import Any
 import json
@@ -12,7 +27,77 @@ from utils.helpers import create_error_response, create_success_response, safe_j
 logger = logging.getLogger(__name__)
 
 class HybridSearchTool(Tool):
+    """
+    A hybrid search tool that combines BM25 keyword search with vector similarity search.
+    
+    This tool provides a unified interface for performing hybrid searches in Weaviate,
+    which combines the precision of keyword-based BM25 search with the semantic
+    understanding of vector similarity search. The alpha parameter controls the
+    weighting between the two search methods.
+    
+    The hybrid search is particularly useful when you want to find documents that are
+    both semantically similar to your query and contain relevant keywords. This
+    approach often provides more comprehensive and relevant results than either
+    search method alone.
+    
+    Attributes:
+        runtime: Runtime context containing credentials and configuration
+    """
+
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
+        """
+        Execute hybrid search combining BM25 and vector search methods.
+        
+        This method performs a hybrid search that combines keyword-based BM25 search
+        with vector similarity search. The alpha parameter controls the relative
+        weighting between the two search methods, allowing fine-tuning of the
+        search behavior based on the use case.
+        
+        Parameters:
+            tool_parameters (dict[str, Any]): Dictionary containing search parameters
+                - collection_name (str): Name of the Weaviate collection to search (required)
+                - query (str): Text query for BM25 search component (optional if query_vector provided)
+                - query_vector (str/list): Vector for similarity search component (optional if query provided)
+                    - String: JSON array string or comma-separated values
+                    - List: Direct list of numbers
+                - alpha (float): Weighting factor between BM25 and vector search (0.0-1.0, default: 0.7)
+                    - 0.0: Pure vector search
+                    - 1.0: Pure BM25 search
+                    - 0.7: Balanced hybrid (default)
+                - limit (int): Maximum number of results to return (1-1000, default: 10)
+                - where_filter (str): JSON string containing filter criteria for document filtering
+                - return_properties (str): Comma-separated list of properties to return from results
+        
+        Yields:
+            ToolInvokeMessage: JSON messages containing search results or error information
+            
+        Search Behavior:
+            The hybrid search combines two scoring methods:
+            1. BM25 Score: Based on term frequency and document frequency
+            2. Vector Similarity Score: Based on cosine similarity between query and document vectors
+            
+            Final Score = alpha * BM25_Score + (1 - alpha) * Vector_Score
+            
+            This allows fine-tuning the balance between keyword matching and semantic similarity.
+            
+        Input Validation:
+            - Collection name is required
+            - At least one of query or query_vector must be provided
+            - Alpha must be between 0.0 and 1.0
+            - Limit must be between 1 and 1000
+            - Query vector must be valid numeric array
+            - Where filter must be valid JSON if provided
+            
+        Error Handling:
+            Comprehensive validation for all input parameters with descriptive error messages.
+            Handles connection errors and search failures gracefully.
+            
+        Returns:
+            Generator[ToolInvokeMessage]: Stream of JSON messages containing:
+                - Search results with documents and metadata
+                - Result count and search parameters
+                - Error messages for validation failures
+        """
         try:
             collection_name = (tool_parameters.get('collection_name') or '').strip()
             query = (tool_parameters.get('query') or '').strip()

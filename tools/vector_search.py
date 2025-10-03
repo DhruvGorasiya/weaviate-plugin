@@ -1,3 +1,19 @@
+"""
+Vector Search Tool for Weaviate Plugin
+
+This module provides a vector similarity search tool that enables users to find
+documents based on semantic similarity using vector embeddings. It uses cosine
+similarity to rank documents by their vector distance from the query vector.
+
+The vector search tool is ideal for finding semantically similar documents,
+implementing recommendation systems, and performing similarity-based retrieval
+in vector databases. It supports filtering and property selection for refined
+search results.
+
+Classes:
+    VectorSearchTool: Main tool class for vector similarity search operations
+"""
+
 from collections.abc import Generator
 from typing import Any
 import logging
@@ -11,7 +27,79 @@ from utils.helpers import create_error_response, create_success_response, safe_j
 logger = logging.getLogger(__name__)
 
 class VectorSearchTool(Tool):
+    """
+    A vector similarity search tool that finds documents based on semantic similarity.
+    
+    This tool provides a straightforward interface for performing vector similarity
+    searches in Weaviate collections. It uses cosine similarity to rank documents
+    by their vector distance from the provided query vector, enabling semantic
+    search capabilities.
+    
+    The tool is particularly useful for finding documents that are semantically
+    similar to a given query vector, implementing recommendation systems, and
+    performing similarity-based retrieval in vector databases.
+    
+    Attributes:
+        runtime: Runtime context containing credentials and configuration
+    """
+
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
+        """
+        Execute vector similarity search using provided query vector.
+        
+        This method performs a vector similarity search on the specified Weaviate
+        collection using the provided query vector. It finds documents that are
+        semantically similar to the query vector and returns them ranked by
+        similarity score.
+        
+        Parameters:
+            tool_parameters (dict[str, Any]): Dictionary containing search parameters
+                - collection_name (str): Name of the Weaviate collection to search (required)
+                - query_vector (str): Query vector for similarity search (required)
+                    - String: JSON array string or comma-separated values
+                    - Must be a non-empty list of numbers
+                - limit (int): Maximum number of results to return (1-1000, default: 10)
+                - where_filter (str): JSON string containing filter criteria for document filtering (optional)
+                - return_properties (str): Comma-separated list of properties to return from results (optional)
+        
+        Yields:
+            ToolInvokeMessage: JSON messages containing search results or error information
+            
+        Search Algorithm:
+            The tool uses cosine similarity to rank documents:
+            - Calculates cosine similarity between query vector and document vectors
+            - Returns documents ranked by similarity score (highest first)
+            - Supports filtering to narrow down search scope
+            - Allows property selection to control returned data
+            
+        Vector Format Support:
+            The tool accepts query vectors in multiple formats:
+            - JSON array string: "[0.1, 0.2, 0.3, ...]"
+            - Comma-separated values: "0.1, 0.2, 0.3, ..."
+            - Both formats are automatically parsed and validated
+            
+        Property Filtering:
+            - return_properties: Controls which document properties are included in results
+            - where_filter: Applies additional filtering criteria using Weaviate's query language
+            - Both parameters are optional and can be used together
+            
+        Input Validation:
+            - Collection name is required
+            - Query vector is required and must be valid numeric array
+            - Limit must be between 1 and 1000
+            - Where filter must be valid JSON if provided
+            - Property lists are parsed and validated
+            
+        Error Handling:
+            Comprehensive validation for all input parameters with descriptive error messages.
+            Handles connection errors and search failures gracefully.
+            
+        Returns:
+            Generator[ToolInvokeMessage]: Stream of JSON messages containing:
+                - Search results with documents and similarity scores
+                - Result count and collection information
+                - Error messages for validation failures
+        """
         try:
             collection_name = (tool_parameters.get('collection_name') or '').strip()
             qv_raw = (tool_parameters.get('query_vector') or '').strip()

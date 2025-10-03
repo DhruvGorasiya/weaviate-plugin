@@ -24,7 +24,9 @@ class WeaviateTextEmbeddingModel(TextEmbeddingModel):
             )
             
             try:
-                temp_collection_name = f"temp_embedding_{hash(query) % 10000}"
+                # Use the first text from the input list
+                text_to_embed = texts[0] if texts else ""
+                temp_collection_name = f"temp_embedding_{hash(text_to_embed) % 10000}"
                 
                 collection_config = {
                     'properties': [
@@ -68,10 +70,10 @@ class WeaviateTextEmbeddingModel(TextEmbeddingModel):
                 client.collections.create(temp_collection_name, **collection_config)
                 
                 collection = client.collections.get(temp_collection_name)
-                collection.data.insert({'text': query})
+                collection.data.insert({'text': text_to_embed})
                 
                 result = collection.query.near_text(
-                    query=query,
+                    query=text_to_embed,
                     limit=1,
                     return_metadata=MetadataQuery(distance=True)
                 ).do()

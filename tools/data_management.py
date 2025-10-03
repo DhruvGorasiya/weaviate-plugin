@@ -1,3 +1,17 @@
+"""
+Data Management Tool for Weaviate Plugin
+
+This module provides a comprehensive data management tool for interacting with Weaviate
+vector database. It supports various CRUD operations including listing collections,
+inserting, updating, deleting, and retrieving objects.
+
+Classes:
+    DataManagementTool: Main tool class for data management operations
+
+Constants:
+    _ALLOWED_OPS: Set of allowed operations for the tool
+"""
+
 from collections.abc import Generator
 from typing import Any, List, Dict, Optional
 import json
@@ -10,10 +24,117 @@ from utils.helpers import create_error_response, create_success_response, safe_j
 
 logger = logging.getLogger(__name__)
 
+# Allowed operations for the data management tool
 _ALLOWED_OPS = {"list_collections", "insert", "update", "delete", "get", "list_objects"}
 
 class DataManagementTool(Tool):
+    """
+    A comprehensive data management tool for Weaviate vector database operations.
+    
+    This tool provides a unified interface for performing various data management
+    operations on Weaviate collections including listing collections, inserting,
+    updating, deleting, and retrieving objects. It supports both single and batch
+    operations, multi-tenancy, and various filtering options.
+    
+    The tool inherits from the Dify Plugin Tool base class and implements the
+    required _invoke method to handle tool execution.
+    
+    Attributes:
+        runtime: Runtime context containing credentials and configuration
+    """
+    
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
+        """
+        Execute data management operations based on provided parameters.
+        
+        This is the main entry point for the tool that processes different operations
+        including list_collections, insert, update, delete, get, and list_objects.
+        The method validates input parameters, establishes a Weaviate client connection,
+        executes the requested operation, and returns appropriate responses.
+        
+        Parameters:
+            tool_parameters (dict[str, Any]): Dictionary containing operation parameters
+                - operation (str): The operation to perform. Must be one of:
+                    - "list_collections": List all available collections
+                    - "insert": Insert one or more objects into a collection
+                    - "update": Update an existing object
+                    - "delete": Delete an object or objects by filter
+                    - "get": Retrieve a specific object by UUID
+                    - "list_objects": List objects from a collection with optional filtering
+                - collection_name (str): Name of the target collection (required for all operations except list_collections)
+                - object_data (str): JSON string containing object data (required for insert/update)
+                - object_uuid (str): UUID of the object to operate on (required for get/update/delete)
+                - return_properties (str): Comma-separated list of properties to return
+                - where_filter (str): JSON string containing filter criteria for list_objects/delete
+                - limit (int): Maximum number of objects to return (default: 100)
+                - tenant (str): Tenant identifier for multi-tenant operations
+                - include_vector (bool): Whether to include vector data in results (default: False)
+                - return_additional (str): Comma-separated list of additional fields to return
+                - mode (str): Insert mode - "single" or "batch" (default: "single")
+                - batch_size (int): Number of objects per batch for batch insert (default: 100)
+                - update_mode (str): Update mode - "merge", "replace", or "vector_only" (default: "merge")
+                - dry_run (bool): Whether to perform a dry run for delete operations (default: False)
+        
+        Yields:
+            ToolInvokeMessage: JSON messages containing operation results or error information
+            
+        Operations:
+            list_collections:
+                Lists all available collections in the Weaviate instance.
+                Returns collection names and count.
+                
+            insert:
+                Inserts one or more objects into the specified collection.
+                Supports both single object and batch insertion modes.
+                For batch mode, objects are processed in configurable batch sizes.
+                Returns UUIDs of inserted objects or batch operation statistics.
+                
+            update:
+                Updates an existing object in the specified collection.
+                Supports three update modes:
+                - merge: Merge new data with existing object properties
+                - replace: Replace the entire object with new data
+                - vector_only: Update only the vector data of the object
+                Returns confirmation of successful update.
+                
+            delete:
+                Deletes objects from the specified collection.
+                Supports two deletion methods:
+                - UUID-based: Delete a specific object by its UUID
+                - Filter-based: Delete multiple objects matching filter criteria
+                Supports dry-run mode to preview deletion without executing.
+                Returns count of deleted objects.
+                
+            get:
+                Retrieves a specific object by its UUID from the specified collection.
+                Supports property filtering and additional field inclusion.
+                Returns the complete object data or null if not found.
+                
+            list_objects:
+                Lists objects from the specified collection with optional filtering.
+                Supports property filtering, limit constraints, and field selection.
+                Can include vector data and additional metadata fields.
+                Returns array of matching objects with count information.
+        
+        Error Handling:
+            The method includes comprehensive error handling for:
+            - Invalid operation names
+            - Missing required parameters
+            - Invalid JSON data formats
+            - Weaviate client connection issues
+            - Operation-specific validation errors
+            
+        Client Management:
+            Automatically establishes and manages Weaviate client connections.
+            Ensures proper cleanup by disconnecting clients in finally blocks.
+            Uses credentials from the runtime context for authentication.
+        
+        Returns:
+            Generator[ToolInvokeMessage]: Stream of JSON messages containing:
+                - Success responses with operation results and metadata
+                - Error responses with detailed error messages
+                - Status information and operation confirmations
+        """
         try:
             # normalize inputs
             op_raw = tool_parameters.get("operation", "")
@@ -300,7 +421,7 @@ class DataManagementTool(Tool):
                         ))
                     return
 
-                # fallback (shouldn’t happen)
+                # fallback (shouldn't happen)
                 yield self.create_json_message(create_error_response(
                     f"Unsupported operation '{operation}'"
                 ))

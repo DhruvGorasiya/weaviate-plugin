@@ -1,3 +1,14 @@
+"""
+Weaviate Client Utility Module
+
+This module provides a high-level Python client for interacting with Weaviate vector database.
+It abstracts the complexity of Weaviate's API and provides convenient methods for common operations
+including collection management, data insertion, querying, and search operations.
+
+Author: Weaviate Team
+Version: 1.0.0
+"""
+
 import logging
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
@@ -11,9 +22,18 @@ from weaviate.exceptions import UnexpectedStatusCodeError
 
 logger = logging.getLogger(__name__)
 
-def _parse_endpoint(url: str):
+def _parse_endpoint(url: str) -> tuple:
     """
-    Accepts full http(s)://host[:port] and returns parts for connect_to_custom.
+    Parse a Weaviate endpoint URL and extract connection parameters.
+    
+    This helper function takes a full HTTP(S) URL and extracts the necessary
+    host, port, and security settings for both HTTP and gRPC connections.
+    
+    Args:
+        url (str): Full Weaviate URL (e.g., "https://localhost:8080" or "http://weaviate.example.com")
+        
+    Returns:
+        tuple: A tuple containing (http_host, http_port, http_secure, grpc_host, grpc_port, grpc_secure)
     """
     p = urlparse(url)
     if not p.scheme or not p.netloc:
@@ -29,13 +49,50 @@ def _parse_endpoint(url: str):
     return host, http_port, http_secure, host, grpc_port, grpc_secure
 
 class WeaviateClient:
+    """
+    High-level client for interacting with Weaviate vector database.
+    
+    This client provides a simplified interface for common Weaviate operations including
+    collection management, data insertion, querying, and various search methods. It handles
+    connection management, error handling, and data serialization automatically.
+    
+    Attributes:
+        url (str): The Weaviate instance URL
+        api_key (Optional[str]): API key for authentication (if required)
+        timeout (int): Connection timeout in seconds
+        _client (Optional[weaviate.WeaviateClient]): Internal Weaviate client instance
+    """
+    
     def __init__(self, url: str, api_key: Optional[str] = None, timeout: int = 60):
+        """
+        Initialize the Weaviate client.
+        
+        Args:
+            url (str): Weaviate instance URL (e.g., "https://localhost:8080")
+            api_key (Optional[str]): API key for authentication. Required for cloud instances.
+            timeout (int): Connection timeout in seconds. Defaults to 60.
+            
+        """
         self.url = url
         self.api_key = api_key
         self.timeout = timeout
         self._client: Optional[weaviate.WeaviateClient] = None
 
     def connect(self) -> weaviate.WeaviateClient:
+        """
+        Establish connection to Weaviate instance.
+        
+        This method creates and returns a connection to the Weaviate instance.
+        It automatically detects whether the instance is cloud-hosted or self-hosted
+        and uses the appropriate connection method. The connection is cached and reused
+        for subsequent operations.
+        
+        Returns:
+            weaviate.WeaviateClient: Connected Weaviate client instance
+            
+        Raises:
+            ConnectionError: If Weaviate instance is not ready or connection fails
+        """
         if self._client is not None:
             return self._client
 
@@ -72,7 +129,15 @@ class WeaviateClient:
             raise ConnectionError("Weaviate is not ready")
         return self._client
 
-    def disconnect(self):
+    def disconnect(self) -> None:
+        """
+        Disconnect from Weaviate instance and clean up resources.
+        
+        This method closes the connection to Weaviate and cleans up internal resources.
+        It's safe to call this method multiple times. After disconnection, the client
+        will automatically reconnect on the next operation.
+        
+        """
         try:
             if self._client:
                 self._client.close()
@@ -84,6 +149,12 @@ class WeaviateClient:
     # ---------- Collections / Schema ----------
 
     def list_collections(self) -> List[str]:
+        """
+        Retrieve a list of all collection names in the Weaviate instance.
+        
+        Returns:
+            List[str]: List of collection names. Returns empty list on error.
+        """
         try:
             client = self.connect()
             infos = client.collections.list_all()
@@ -98,6 +169,16 @@ class WeaviateClient:
             return []
 
     def get_collection_schema(self, class_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve the schema configuration for a specific collection.
+        
+        Args:
+            class_name (str): Name of the collection to get schema for
+            
+        Returns:
+            Optional[Dict[str, Any]]: Collection schema including properties and vectorizers.
+                                     Returns None on error.
+        """
         try:
             client = self.connect()
             col = client.collections.use(class_name)
@@ -122,7 +203,23 @@ class WeaviateClient:
         description: Optional[str] = None,
         multi_tenancy: Optional[bool] = None,
     ) -> bool:
-        """Create a new collection with optional multi-tenancy and description"""
+        """
+        Create a new collection with specified properties and configuration.
+        
+        Args:
+            class_name (str): Name of the collection to create
+            properties (List[Dict[str, Any]]): List of property definitions. Each dict should contain:
+                - name (str): Property name
+                - data_type (str): Data type (TEXT, INT, NUMBER, BOOLEAN, DATE, etc.)
+                - tokenization (str, optional): Tokenization method
+            vectorizer (Optional[str]): Vectorizer type ("text2vec-openai", "text2vec-transformers", etc.)
+            vector_index_config (Optional[Dict[str, Any]]): Vector index configuration
+            description (Optional[str]): Collection description
+            multi_tenancy (Optional[bool]): Enable multi-tenancy for this collection
+            
+        Returns:
+            bool: True if collection was created successfully, False otherwise
+        """
         try:
             client = self.connect()
             props: List[Property] = []
@@ -164,6 +261,15 @@ class WeaviateClient:
             return False
 
     def delete_collection(self, class_name: str) -> bool:
+        """
+        Delete a collection and all its data.
+        
+        Args:
+            class_name (str): Name of the collection to delete
+            
+        Returns:
+            bool: True if collection was deleted successfully, False otherwise
+        """
         try:
             client = self.connect()
             if client.collections.exists(class_name):
@@ -174,6 +280,16 @@ class WeaviateClient:
             return False
 
     def get_collection_stats(self, class_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get statistics for a collection including object count.
+        
+        Args:
+            class_name (str): Name of the collection to get stats for
+            
+        Returns:
+            Optional[Dict[str, Any]]: Collection statistics including total_count.
+                                     Returns None on error.
+        """
         try:
             client = self.connect()
             col = client.collections.use(class_name)
@@ -186,7 +302,15 @@ class WeaviateClient:
             return None
 
     def collection_exists(self, class_name: str) -> bool:
-        """Check if a collection exists"""
+        """
+        Check if a collection exists in the Weaviate instance.
+        
+        Args:
+            class_name (str): Name of the collection to check
+            
+        Returns:
+            bool: True if collection exists, False otherwise
+        """
         try:
             client = self.connect()
             return client.collections.exists(class_name)
@@ -195,7 +319,19 @@ class WeaviateClient:
             return False
 
     def add_property(self, class_name: str, prop: Dict[str, Any]) -> bool:
-        """Add a property to an existing collection"""
+        """
+        Add a new property to an existing collection.
+        
+        Args:
+            class_name (str): Name of the collection to add property to
+            prop (Dict[str, Any]): Property definition containing:
+                - name (str): Property name
+                - data_type (str): Data type (TEXT, INT, NUMBER, etc.)
+                - tokenization (str, optional): Tokenization method
+                
+        Returns:
+            bool: True if property was added successfully, False otherwise
+        """
         try:
             client = self.connect()
             col = client.collections.use(class_name)
@@ -218,7 +354,16 @@ class WeaviateClient:
             return False
 
     def update_collection_config(self, class_name: str, cfg_updates: Dict[str, Any]) -> bool:
-        """Update collection configuration (limited to updatable fields)"""
+        """
+        Update collection configuration (limited to updatable fields).
+        
+        Args:
+            class_name (str): Name of the collection to update
+            cfg_updates (Dict[str, Any]): Configuration updates to apply
+            
+        Returns:
+            bool: True if configuration was updated successfully, False otherwise
+        """
         try:
             client = self.connect()
             col = client.collections.use(class_name)
@@ -235,9 +380,18 @@ class WeaviateClient:
 
     def insert_objects(self, class_name: str, objects: List[Dict[str, Any]]) -> List[str]:
         """
-        Accepts list of dicts, each like:
-          {"id": <optional_uuid>, "properties": {...}, "vector": [..] (optional)}
-        Returns list of UUIDs inserted.
+        Insert multiple objects into a collection.
+        
+        Args:
+            class_name (str): Name of the collection to insert objects into
+            objects (List[Dict[str, Any]]): List of objects to insert. Each object can contain:
+                - id (str, optional): Custom UUID for the object
+                - properties (Dict[str, Any]): Object properties
+                - vector (List[float], optional): Custom vector for the object
+                
+        Returns:
+            List[str]: List of UUIDs of successfully inserted objects
+
         """
         try:
             client = self.connect()
@@ -280,6 +434,18 @@ class WeaviateClient:
             raise e  # Re-raise the exception with details
 
     def update_object(self, class_name: str, uuid: str, properties: Dict[str, Any]) -> bool:
+        """
+        Update properties of an existing object.
+        
+        Args:
+            class_name (str): Name of the collection containing the object
+            uuid (str): UUID of the object to update
+            properties (Dict[str, Any]): New properties to set
+            
+        Returns:
+            bool: True if object was updated successfully, False otherwise
+
+        """
         try:
             client = self.connect()
             col = client.collections.use(class_name)
@@ -295,6 +461,17 @@ class WeaviateClient:
             return False
 
     def delete_object(self, class_name: str, uuid: str) -> bool:
+        """
+        Delete an object by its UUID.
+        
+        Args:
+            class_name (str): Name of the collection containing the object
+            uuid (str): UUID of the object to delete
+            
+        Returns:
+            bool: True if object was deleted successfully, False otherwise
+
+        """
         try:
             client = self.connect()
             col = client.collections.use(class_name)
@@ -305,12 +482,27 @@ class WeaviateClient:
                 return False
             logger.error(f"Delete error: {e}")
             return False
+        except Exception as e:
+            logger.error(f"Error deleting object {uuid} from {class_name}: {e}")
+            return False
 
     def get_object(self, class_name: str, uuid: str, return_properties: Optional[List[str]] = None) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve a specific object by its UUID.
+        
+        Args:
+            class_name (str): Name of the collection containing the object
+            uuid (str): UUID of the object to retrieve
+            return_properties (Optional[List[str]]): Specific properties to return
+            
+        Returns:
+            Optional[Dict[str, Any]]: Object data including UUID, properties, and metadata.
+                                     Returns None if object not found.
+
+        """
         try:
             client = self.connect()
             col = client.collections.use(class_name)
-            # Fix: Use col.query.fetch_object_by_id instead of col.data.get_by_id
             obj = col.query.fetch_object_by_id(uuid, return_properties=return_properties)
             if obj is None:
                 return None
@@ -325,9 +517,18 @@ class WeaviateClient:
 
     # ---------- Queries ----------
 
-    def _build_where(self, where_filter: Optional[Dict[str, Any]]):
+    def _build_where(self, where_filter: Optional[Dict[str, Any]]) -> Optional[Filter]:
         """
-        Builds a proper Weaviate Filter object from various input formats.
+        Build a proper Weaviate Filter object from various input formats.
+        
+        This internal method converts simple dictionary filters into Weaviate Filter objects
+        that can be used in queries.
+        
+        Args:
+            where_filter (Optional[Dict[str, Any]]): Filter conditions
+            
+        Returns:
+            Optional[Filter]: Weaviate Filter object or None
         """
         if not where_filter:
             return None
@@ -360,6 +561,21 @@ class WeaviateClient:
         return_properties: Optional[List[str]] = None,
         target_vector: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
+        """
+        Perform vector similarity search in a collection.
+        
+        Args:
+            class_name (str): Name of the collection to search
+            query_vector (List[float]): Vector to search for similar objects
+            limit (int): Maximum number of results to return (default: 10)
+            where_filter (Optional[Dict[str, Any]]): Additional filter conditions
+            return_properties (Optional[List[str]]): Specific properties to return
+            target_vector (Optional[str]): Target vector name (default: "default")
+            
+        Returns:
+            List[Dict[str, Any]]: List of similar objects with metadata including distance
+
+        """
         try:
             client = self.connect()
             col = client.collections.use(class_name)
@@ -395,6 +611,27 @@ class WeaviateClient:
         return_properties: Optional[List[str]] = None,
         target_vector: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
+        """
+        Perform hybrid search combining text and vector search.
+        
+        This method combines BM25 text search with vector similarity search for
+        more comprehensive results. The alpha parameter controls the balance between
+        text and vector search (0.0 = text only, 1.0 = vector only).
+        
+        Args:
+            class_name (str): Name of the collection to search
+            query (str): Text query for BM25 search
+            query_vector (Optional[List[float]]): Vector for similarity search
+            alpha (float): Balance between text and vector search (0.0-1.0, default: 0.7)
+            limit (int): Maximum number of results to return (default: 10)
+            where_filter (Optional[Dict[str, Any]]): Additional filter conditions
+            return_properties (Optional[List[str]]): Specific properties to return
+            target_vector (Optional[str]): Target vector name (default: "default")
+            
+        Returns:
+            List[Dict[str, Any]]: List of search results with metadata including score
+
+        """
         try:
             client = self.connect()
             col = client.collections.use(class_name)
@@ -470,6 +707,22 @@ class WeaviateClient:
         search_properties: Optional[List[str]] = None,
         target_vector: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
+        """
+        Perform BM25 text search in a collection.
+        
+        Args:
+            class_name (str): Name of the collection to search
+            query (str): Text query for BM25 search
+            limit (int): Maximum number of results to return (default: 10)
+            where_filter (Optional[Dict[str, Any]]): Additional filter conditions
+            return_properties (Optional[List[str]]): Specific properties to return
+            search_properties (Optional[List[str]]): Properties to search in
+            target_vector (Optional[str]): Target vector name (default: "default")
+            
+        Returns:
+            List[Dict[str, Any]]: List of search results
+
+        """
         try:
             client = self.connect()
             col = client.collections.use(class_name)
@@ -502,7 +755,21 @@ class WeaviateClient:
         consistency_level: Optional[str] = None,
         conflict_mode: str = "error"
     ) -> Dict[str, Any]:
-        """Insert objects in batch with advanced options"""
+        """
+        Insert objects in batch with advanced options for better performance.
+        
+        Args:
+            class_name (str): Name of the collection to insert objects into
+            objects (List[Dict[str, Any]]): List of objects to insert
+            tenant (Optional[str]): Tenant name for multi-tenant collections
+            batch_size (int): Batch size for processing (default: 100)
+            consistency_level (Optional[str]): Consistency level for the operation
+            conflict_mode (str): How to handle conflicts ("error", "replace", "skip")
+            
+        Returns:
+            Dict[str, Any]: Batch operation results including counts and errors
+
+        """
         try:
             client = self.connect()
             col = client.collections.use(class_name)
@@ -565,7 +832,24 @@ class WeaviateClient:
         include_vector: bool = False,
         return_additional: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
-        """List objects with filtering, pagination, and sorting"""
+        """
+        List objects from a collection with filtering, pagination, and sorting.
+        
+        Args:
+            class_name (str): Name of the collection to query
+            where_filter (Optional[Dict[str, Any]]): Filter conditions
+            limit (int): Maximum number of results to return (default: 100)
+            after (Optional[str]): Cursor for pagination
+            sort (Optional[List[Dict[str, str]]]): Sort configuration
+            tenant (Optional[str]): Tenant name for multi-tenant collections
+            return_properties (Optional[List[str]]): Specific properties to return
+            include_vector (bool): Whether to include vector data
+            return_additional (Optional[List[str]]): Additional metadata to return
+            
+        Returns:
+            List[Dict[str, Any]]: List of objects with their properties and metadata
+
+        """
         try:
             client = self.connect()
             col = client.collections.use(class_name)
@@ -635,7 +919,18 @@ class WeaviateClient:
         tenant: Optional[str] = None,
         dry_run: bool = False
     ) -> Dict[str, Any]:
-        """Delete objects by filter with optional dry run"""
+        """
+        Delete objects by filter with optional dry run.
+        
+        Args:
+            class_name (str): Name of the collection to delete from
+            where_filter (Dict[str, Any]): Filter conditions for objects to delete
+            tenant (Optional[str]): Tenant name for multi-tenant collections
+            dry_run (bool): If True, only count objects that would be deleted
+            
+        Returns:
+            Dict[str, Any]: Deletion results including counts and dry run status
+        """
         try:
             client = self.connect()
             col = client.collections.use(class_name)
@@ -678,7 +973,20 @@ class WeaviateClient:
         vector: Optional[List[float]] = None,
         tenant: Optional[str] = None
     ) -> bool:
-        """Replace entire object (overwrite all properties)"""
+        """
+        Replace entire object (overwrite all properties).
+        
+        Args:
+            class_name (str): Name of the collection containing the object
+            uuid (str): UUID of the object to replace
+            properties (Dict[str, Any]): New properties for the object
+            vector (Optional[List[float]]): New vector for the object
+            tenant (Optional[str]): Tenant name for multi-tenant collections
+            
+        Returns:
+            bool: True if object was replaced successfully, False otherwise
+            
+        """
         try:
             client = self.connect()
             col = client.collections.use(class_name)
@@ -705,7 +1013,19 @@ class WeaviateClient:
         vector: List[float],
         tenant: Optional[str] = None
     ) -> bool:
-        """Update only the vector of an object"""
+        """
+        Update only the vector of an object.
+        
+        Args:
+            class_name (str): Name of the collection containing the object
+            uuid (str): UUID of the object to update
+            vector (List[float]): New vector for the object
+            tenant (Optional[str]): Tenant name for multi-tenant collections
+            
+        Returns:
+            bool: True if vector was updated successfully, False otherwise
+            
+        """
         try:
             client = self.connect()
             col = client.collections.use(class_name)

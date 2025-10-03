@@ -1,4 +1,29 @@
 # tools/generative_search.py
+"""
+Generative Search Tool for Weaviate Plugin
+
+This module provides a comprehensive generative search tool that combines Weaviate vector
+database search capabilities with Large Language Model (LLM) generation. It supports
+Retrieval-Augmented Generation (RAG) patterns with various search modes and LLM providers.
+
+The tool supports multiple search modes (BM25, vector search, hybrid), various LLM providers
+(OpenAI, Anthropic), and includes support for multimodal inputs including text and images.
+
+Classes:
+    GenerativeSearchTool: Main tool class for generative search operations
+
+Functions:
+    _to_list: Convert various input types to a list of strings
+    _parse_query_vector: Parse and validate query vectors from various input formats
+    _parse_generative_config: Parse generative configuration from various input formats
+    _parse_images: Parse and validate image inputs from various formats
+    _validate_base64_image: Validate base64 encoded image data
+    _resolve_llm_key: Resolve LLM API key from various sources
+    _build_single_prompt: Build prompts for single document processing
+    _build_grouped_prompt: Build prompts for grouped document processing
+    _extract_images_from_properties: Extract base64 images from document properties
+"""
+
 from collections.abc import Generator
 from typing import Any, List, Optional, Dict
 import logging
@@ -15,6 +40,19 @@ logger = logging.getLogger(__name__)
 # -------------------- small parsing helpers --------------------
 
 def _to_list(value) -> Optional[List[str]]:
+    """
+    Convert various input types to a list of strings.
+    
+    This utility function normalizes different input formats (None, list, string)
+    into a consistent list of strings format. It handles comma-separated strings,
+    existing lists, and filters out empty values.
+    
+    Parameters:
+        value: Input value to convert. Can be None, list, or string.
+        
+    Returns:
+        Optional[List[str]]: List of non-empty string values, or None if input is empty/invalid.
+    """
     if value is None:
         return None
     if isinstance(value, list):
@@ -25,6 +63,22 @@ def _to_list(value) -> Optional[List[str]]:
     return [p.strip() for p in s.split(",") if p.strip()]
 
 def _parse_query_vector(raw) -> Optional[List[float]]:
+    """
+    Parse and validate query vectors from various input formats.
+    
+    This function handles multiple input formats for query vectors including
+    JSON arrays, comma-separated strings, and Python lists. It validates that
+    all elements can be converted to floats and returns None for invalid inputs.
+    
+    Parameters:
+        raw: Input vector data. Can be None, list, or string.
+            - List: Direct list of numbers
+            - String: JSON array string or comma-separated values
+            - None: Returns None
+            
+    Returns:
+        Optional[List[float]]: Parsed vector as list of floats, or None if invalid.
+    """
     if raw is None:
         return None
     if isinstance(raw, list):
@@ -49,6 +103,22 @@ def _parse_query_vector(raw) -> Optional[List[float]]:
         return None
 
 def _parse_generative_config(raw) -> Dict[str, Any]:
+    """
+    Parse generative configuration from various input formats.
+    
+    This function handles configuration objects for LLM generation parameters
+    including temperature, max_tokens, top_p, and other generation settings.
+    It accepts dictionaries directly or JSON strings that parse to dictionaries.
+    
+    Parameters:
+        raw: Configuration input. Can be None, dict, or JSON string.
+            - Dict: Direct configuration dictionary
+            - String: JSON string that parses to dictionary
+            - None: Returns empty dictionary
+            
+    Returns:
+        Dict[str, Any]: Configuration dictionary with generation parameters.
+    """
     if raw is None:
         return {}
     if isinstance(raw, dict):
@@ -59,6 +129,22 @@ def _parse_generative_config(raw) -> Dict[str, Any]:
     return {}
 
 def _parse_images(raw) -> Optional[List[str]]:
+    """
+    Parse and validate image inputs from various formats.
+    
+    This function handles image inputs for multimodal LLM generation.
+    It supports base64 encoded images in various input formats including
+    single strings, JSON arrays, and Python lists.
+    
+    Parameters:
+        raw: Image input data. Can be None, list, or string.
+            - List: List of image strings
+            - String: Single image string or JSON array string
+            - None: Returns None
+            
+    Returns:
+        Optional[List[str]]: List of image strings, or None if no valid images found.
+    """
     if raw is None:
         return None
     if isinstance(raw, list):
@@ -75,6 +161,18 @@ def _parse_images(raw) -> Optional[List[str]]:
     return None
 
 def _validate_base64_image(img_str: str) -> bool:
+    """
+    Validate base64 encoded image data.
+    
+    This function checks if a string represents valid base64 encoded image data
+    by attempting to decode it and verifying it produces non-empty binary data.
+    
+    Parameters:
+        img_str: String to validate as base64 image data.
+        
+    Returns:
+        bool: True if the string is valid base64 image data, False otherwise.
+    """
     try:
         decoded = base64.b64decode(img_str, validate=True)
         return len(decoded) > 0
@@ -82,6 +180,22 @@ def _validate_base64_image(img_str: str) -> bool:
         return False
 
 def _resolve_llm_key(tool_params: dict, plugin_creds: dict, provider: str) -> Optional[str]:
+    """
+    Resolve LLM API key from various sources with priority order.
+    
+    This function implements a priority-based key resolution system:
+    1. Per-call API key (highest priority)
+    2. Plugin-level credentials for specific provider
+    3. None if no valid key found
+    
+    Parameters:
+        tool_params: Tool parameters dictionary containing per-call API key.
+        plugin_creds: Plugin credentials dictionary containing provider keys.
+        provider: LLM provider name (e.g., "openai", "anthropic").
+        
+    Returns:
+        Optional[str]: Resolved API key string, or None if no valid key found.
+    """
     # 1) Per-call key wins
     per_call = (tool_params.get("llm_api_key") or "").strip()
     if per_call:
@@ -98,6 +212,20 @@ def _resolve_llm_key(tool_params: dict, plugin_creds: dict, provider: str) -> Op
     return None
 
 def _build_single_prompt(template: str, properties: Dict[str, Any]) -> str:
+    """
+    Build prompts for single document processing.
+    
+    This function creates prompts by replacing placeholders in a template
+    with values from document properties. It uses simple string replacement
+    with curly brace notation for placeholders.
+    
+    Parameters:
+        template: Prompt template string with {property_name} placeholders.
+        properties: Dictionary of document properties to substitute.
+        
+    Returns:
+        str: Processed prompt with placeholders replaced by property values.
+    """
     if not template:
         return ""
     result = template
@@ -108,6 +236,21 @@ def _build_single_prompt(template: str, properties: Dict[str, Any]) -> str:
     return result
 
 def _build_grouped_prompt(template: str, all_props: List[Dict[str, Any]], query: str = "") -> str:
+    """
+    Build prompts for grouped document processing.
+    
+    This function creates prompts for processing multiple documents together.
+    It builds a context section from all document properties and substitutes
+    {context} and {query} placeholders in the template.
+    
+    Parameters:
+        template: Prompt template string with {context} and {query} placeholders.
+        all_props: List of property dictionaries from all documents.
+        query: Optional query string to substitute for {query} placeholder.
+        
+    Returns:
+        str: Processed prompt with context and query placeholders replaced.
+    """
     if not template:
         return ""
     # Build context block
@@ -131,6 +274,20 @@ def _build_grouped_prompt(template: str, all_props: List[Dict[str, Any]], query:
     return out
 
 def _extract_images_from_properties(all_props: List[Dict[str, Any]], image_props: Optional[List[str]]) -> List[str]:
+    """
+    Extract base64 images from document properties.
+    
+    This function searches through document properties for base64 encoded images
+    based on specified property names. It validates images and extracts them
+    for use in multimodal LLM generation.
+    
+    Parameters:
+        all_props: List of property dictionaries from all documents.
+        image_props: List of property names that may contain images.
+        
+    Returns:
+        List[str]: List of validated base64 image strings found in properties.
+    """
     if not image_props:
         return []
     images: List[str] = []
@@ -151,14 +308,102 @@ def _extract_images_from_properties(all_props: List[Dict[str, Any]], image_props
 
 class GenerativeSearchTool(Tool):
     """
-    Simplified generative search tool that uses client-side RAG with Weaviate search.
-    Supports:
-      - search_mode: bm25 | near_vector | hybrid
-      - Weaviate options: alpha, where_filter, return_properties, search_properties, target_vector
-      - Client RAG: builds context and calls an LLM (OpenAI/Anthropic) with optional base64 images
+    A comprehensive generative search tool that combines Weaviate vector database
+    search capabilities with Large Language Model (LLM) generation for Retrieval-
+    Augmented Generation (RAG) applications.
+    
+    This tool supports multiple search modes including BM25 keyword search, vector
+    similarity search, and hybrid search combining both approaches. It integrates
+    with various LLM providers (OpenAI, Anthropic) and supports multimodal inputs
+    including text and images for enhanced generation capabilities.
+    
+    The tool implements client-side RAG patterns where it first retrieves relevant
+    documents from Weaviate, builds context from the retrieved content, and then
+    uses an LLM to generate responses based on the context and user query.
+    
+    Attributes:
+        runtime: Runtime context containing credentials and configuration
     """
 
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
+        """
+        Execute generative search operations with LLM-based response generation.
+        
+        This is the main entry point for the generative search tool that performs
+        document retrieval from Weaviate and generates responses using LLM providers.
+        It supports various search modes, prompt templates, and multimodal inputs.
+        
+        Parameters:
+            tool_parameters (dict[str, Any]): Dictionary containing search and generation parameters
+                - collection_name (str): Name of the Weaviate collection to search
+                - query (str): Text query for BM25 and hybrid search modes
+                - query_vector (str/list): Vector for vector and hybrid search modes
+                - limit (int): Maximum number of documents to retrieve (1-20, default: 5)
+                - search_mode (str): Search mode - "bm25", "near_vector", or "hybrid" (default: "bm25")
+                - alpha (float): Hybrid search weight (0.0-1.0, default: 0.7)
+                - target_vector (str): Target vector name for BM25 search
+                - search_properties (str/list): Properties to search in BM25 mode
+                - where_filter (str/dict): JSON filter for document filtering
+                - return_properties (str/list): Properties to return from documents
+                - single_prompt (str): Template for processing each document individually
+                - grouped_task (str): Template for processing all documents together
+                - generative_config (str/dict): LLM generation parameters
+                - images (str/list): Base64 encoded images for multimodal generation
+                - image_properties (str/list): Document properties containing images
+                - return_metadata (bool): Whether to return generation metadata
+                - llm_provider (str): LLM provider - "openai" or "anthropic" (default: "openai")
+                - llm_model (str): LLM model name (default: "gpt-4o-mini")
+                - llm_api_key (str): LLM API key (optional, uses plugin credentials if not provided)
+        
+        Yields:
+            ToolInvokeMessage: JSON messages containing search results and generated responses
+            
+        Search Modes:
+            bm25: Keyword-based search using BM25 algorithm
+                - Requires: query
+                - Optional: search_properties, target_vector
+                
+            near_vector: Vector similarity search
+                - Requires: query_vector
+                - Uses cosine similarity for document ranking
+                
+            hybrid: Combines BM25 and vector search
+                - Requires: query or query_vector (or both)
+                - Uses alpha parameter to weight BM25 vs vector search
+                
+        Generation Modes:
+            single_prompt: Process each retrieved document individually
+                - Uses single_prompt template with document properties
+                - Returns individual responses for each document
+                
+            grouped_task: Process all documents together
+                - Uses grouped_task template with combined context
+                - Returns single response based on all documents
+                
+        LLM Providers:
+            openai: OpenAI GPT models with vision support
+                - Supported models: gpt-4o, gpt-4o-mini, gpt-4-vision
+                - Vision models required for image inputs
+                
+            anthropic: Anthropic Claude models
+                - Supported models: Claude 3/3.5 variants
+                - Vision models required for image inputs
+                
+        Error Handling:
+            Comprehensive validation for:
+            - Required parameters based on search mode
+            - Vector format and validity
+            - Image base64 encoding
+            - LLM API key availability
+            - Search mode compatibility
+            
+        Returns:
+            Generator[ToolInvokeMessage]: Stream of JSON messages containing:
+                - Search results with retrieved documents
+                - Generated responses from LLM
+                - Context sources and metadata
+                - Error messages for failed operations
+        """
         try:
             # -------- inputs --------
             collection = (tool_parameters.get("collection_name") or "").strip()
@@ -469,9 +714,50 @@ class GenerativeSearchTool(Tool):
         return_metadata: bool = False,
     ):
         """
-        Uses OpenAI or Anthropic chat APIs. For images, requires vision-capable models:
-          - OpenAI: gpt-4o / gpt-4o-mini / gpt-4-vision
-          - Anthropic: Claude 3 or 3.5 variants
+        Generate responses using Large Language Model APIs with multimodal support.
+        
+        This method interfaces with various LLM providers (OpenAI, Anthropic) to generate
+        text responses based on queries and context. It supports both text-only and
+        multimodal generation with base64 encoded images.
+        
+        Parameters:
+            query (str): The input query or prompt for generation.
+            context (Optional[str]): Additional context to include in the prompt.
+            llm_provider (str): LLM provider name ("openai" or "anthropic").
+            llm_model (str): Specific model name to use for generation.
+            llm_api_key (str): API key for the LLM provider.
+            generative_config (Optional[Dict[str, Any]]): Generation parameters including:
+                - temperature: Controls randomness (0.0-2.0, default: 0.2)
+                - max_tokens: Maximum tokens to generate (default: 700)
+                - top_p: Nucleus sampling parameter (0.0-1.0, default: 1.0)
+                - frequency_penalty: Frequency penalty (default: 0.0)
+                - presence_penalty: Presence penalty (default: 0.0)
+            images (Optional[List[str]]): List of base64 encoded images for multimodal generation.
+            return_metadata (bool): Whether to return generation metadata including token usage.
+            
+        Returns:
+            Union[str, Dict[str, Any]]: Generated text response or dictionary with text and metadata.
+            
+        Supported Providers:
+            openai: OpenAI GPT models
+                - Text models: gpt-4, gpt-3.5-turbo, etc.
+                - Vision models: gpt-4o, gpt-4o-mini, gpt-4-vision
+                - Images must be base64 encoded with data:image/jpeg;base64, prefix
+                
+            anthropic: Anthropic Claude models
+                - Text models: claude-3-sonnet, claude-3-haiku, etc.
+                - Vision models: claude-3-opus, claude-3-sonnet, claude-3-5-sonnet
+                - Images must be base64 encoded without data URL prefix
+                
+        Error Handling:
+            - Validates model compatibility with image inputs
+            - Handles API errors and network issues
+            - Returns appropriate error messages for unsupported configurations
+            
+        Vision Requirements:
+            - Images require vision-capable models
+            - OpenAI: Models containing "gpt-4o" or "gpt-4-vision"
+            - Anthropic: Models containing "claude-3" or "claude-3-5"
         """
         generative_config = generative_config or {}
         images = images or []
