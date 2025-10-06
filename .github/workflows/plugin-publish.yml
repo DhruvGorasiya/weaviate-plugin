@@ -45,7 +45,7 @@ jobs:
 
           # Override author to use your GitHub username for repository access
           # while keeping "weaviate" as the plugin author in manifest.yaml
-          AUTHOR="dhruvgorasiya"  # Your GitHub username for repository access
+          AUTHOR="DhruvGorasiya"  # Your actual GitHub username with correct capitalization
           echo "Plugin author (from manifest): weaviate"
           echo "GitHub username (for repo access): $AUTHOR"
           echo "author=$AUTHOR" >> $GITHUB_OUTPUT
