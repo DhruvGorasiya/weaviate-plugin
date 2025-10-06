@@ -12,10 +12,40 @@ logger = logging.getLogger(__name__)
 
 class WeaviatePluginProvider(ToolProvider):
     """
-    Validates credentials by attempting a lightweight connection and a simple call.
+    Weaviate plugin provider for Dify that validates credentials and manages connections
+    to Weaviate vector database instances.
     """
 
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
+        """
+        Validates Weaviate connection credentials by performing format checks and
+        establishing a test connection to the Weaviate instance.
+        
+        This method performs the following validation steps:
+        1. Validates URL format using regex patterns
+        2. Validates API key format if provided
+        3. Establishes a connection to the Weaviate instance
+        4. Verifies the instance is ready and responsive
+        5. Performs a test API call to validate authentication
+        
+        Args:
+            credentials (dict[str, Any]): Dictionary containing connection credentials
+                with the following keys:
+                - url (str): Weaviate instance URL (e.g., https://your-instance.com)
+                - api_key (str, optional): API key for authentication if required
+                
+        Raises:
+            ToolProviderCredentialValidationError: If any validation step fails:
+                - Invalid URL format
+                - Invalid API key format
+                - Connection failure
+                - Instance not ready
+                - Authentication failure
+                
+        Note:
+            The method automatically handles connection cleanup and will disconnect
+            the client after validation, even if an error occurs during the process.
+        """
         url = (credentials.get("url") or "").strip()
         api_key = (credentials.get("api_key") or "").strip()
 
