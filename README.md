@@ -209,7 +209,6 @@ This plugin is provided by Weaviate for integration with Dify.
 **Version:** 0.0.1
 **Type:** tool
 
-### Description
+## Repository
 
-
-
+Source code: https://github.com/DhruvGorasiya/weaviate-plugin
