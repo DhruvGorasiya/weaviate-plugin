@@ -1,14 +1,14 @@
 version: 0.0.1
 type: plugin
 author: weaviate
-name: weaviate_plugin
+name: weaviate
 label:
-  en_US: weaviate_plugin
-  ja_JP: weaviate_plugin
-  zh_Hans: weaviate_plugin
-  pt_BR: weaviate_plugin
+  en_US: weaviate
+  ja_JP: weaviate 
+  zh_Hans: weaviate
+  pt_BR: weaviate
 description:
-  en_US: Plugin development to connect weaviate with dify
+  en_US: Build Dify applications using Weaviate for Vector, Generative search and more
   ja_JP: Plugin development to connect weaviate with dify
   zh_Hans: Plugin development to connect weaviate with dify
   pt_BR: Plugin development to connect weaviate with dify

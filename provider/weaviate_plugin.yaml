@@ -1,6 +1,6 @@
 identity:
   author: "weaviate"
-  name: "weaviate_plugin"
+  name: "weaviate"
   label:
     en_US: "Weaviate Vector Database"
     zh_Hans: "Weaviate 向量数据库"
